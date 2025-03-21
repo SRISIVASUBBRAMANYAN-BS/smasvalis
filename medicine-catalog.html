@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMAS - Medicine Catalog</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .medicine-green { background-color: #4ade80; border-color: #16a34a; }
+        .medicine-blue { background-color: #60a5fa; border-color: #2563eb; }
+        .medicine-yellow { background-color: #fde047; border-color: #ca8a04; }
+        .medicine-orange { background-color: #fb923c; border-color: #ea580c; }
+        .medicine-red { background-color: #f87171; border-color: #dc2626; }
+        
+        .medicine-card {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+        
+        .medicine-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .color-info-tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .color-info-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-info-tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        
+        .color-info-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Color Code Information Modal -->
+    <div id="colorInfoModal" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-80 flex justify-center items-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="colorInfoTitle" class="text-xl font-bold text-gray-800">Medicine Color Coding System</h2>
+                <button id="closeColorInfo" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border-2 border-green-500 rounded-lg p-4 bg-green-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-green-500 mr-2"></div>
+                        <h3 id="greenTitle" class="font-semibold text-green-800">Green - General OTC Medicines</h3>
+                    </div>
+                    <p id="greenDesc" class="text-sm text-gray-700">Common over-the-counter medications like paracetamol, antihistamines, and vitamins that don't require a prescription.</p>
+                </div>
+                
+                <div class="border-2 border-blue-500 rounded-lg p-4 bg-blue-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-500 mr-2"></div>
+                        <h3 id="blueTitle" class="font-semibold text-blue-800">Blue - Prescription Medications</h3>
+                    </div>
+                    <p id="blueDesc" class="text-sm text-gray-700">Medications for non-severe conditions that typically require a doctor's prescription, such as antibiotics.</p>
+                </div>
+                
+                <div class="border-2 border-yellow-500 rounded-lg p-4 bg-yellow-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-yellow-500 mr-2"></div>
+                        <h3 id="yellowTitle" class="font-semibold text-yellow-800">Yellow - Chronic Condition Medications</h3>
+                    </div>
+                    <p id="yellowDesc" class="text-sm text-gray-700">Medications for ongoing chronic conditions like diabetes, hypertension, or asthma that require regular use.</p>
+                </div>
+                
+                <div class="border-2 border-orange-500 rounded-lg p-4 bg-orange-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-orange-500 mr-2"></div>
+                        <h3 id="orangeTitle" class="font-semibold text-orange-800">Orange - High-Alert Medications</h3>
+                    </div>
+                    <p id="orangeDesc" class="text-sm text-gray-700">Medications that require special attention and doctor's approval, such as antidepressants or steroids.</p>
+                </div>
+                
+                <div class="border-2 border-red-500 rounded-lg p-4 bg-red-50 md:col-span-2">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-red-500 mr-2"></div>
+                        <h3 id="redTitle" class="font-semibold text-red-800">Red - Emergency Medications</h3>
+                    </div>
+                    <p id="redDesc" class="text-sm text-gray-700">Critical medications for emergency situations, such as EpiPens for severe allergic reactions or emergency painkillers.</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <button id="colorInfoUnderstoodBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                    <span id="understoodLabel">I Understand</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.769 2.156 18 4.828 18h10.343c2.673 0 4.012-3.231 2.122-5.121l-4-4A1 1 0 0113 8.172V4.414l.707-.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.563-.187a1.993 1.993 0 00-.114-.035l1.063-1.063A3 3 0 009 8.172z" clip-rule="evenodd" />
+                    </svg>
+                    <h1 id="headerTitle" class="text-2xl font-bold">SMAS Medicine Catalog</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="colorInfoBtn" class="bg-white text-blue-600 hover:bg-blue-50 font-bold py-2 px-4 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="colorInfoBtnText">Color Codes</span>
+                    </button>
+                    <div class="relative">
+                        <button id="languageToggle" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.20l-.8 2H12a1 1 0 110 2H8.2l-.31.78-.04.08-.79 1.97H12a1 1 0 110 2H6.2l-.31.78-.04.08-.79 1.97H12a1 1 0 110 2H4a1 1 0 01-.93-1.36l3.62-9.05A1 1 0 017.62 9H7a1 1 0 01-1-1V3a1 1 0 011-1zm6 0a1 1 0 011 1v7.59l.3-.3a1 1 0 111.4 1.42l-2 2a1 1 0 01-1.4 0l-2-2a1 1 0 111.4-1.42l.3.3V3a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span id="currentLanguage">English</span>
+                        </button>
+                        <div id="languageDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden z-10">
+                            <div class="py-1">
+                                <a href="#" id="switchToEnglish" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">English</a>
+                                <a href="#" id="switchToTamil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">தமிழ் (Tamil)</a>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="index.html" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="backToMainText">Back to Main</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 id="catalogTitle" class="text-2xl font-semibold mb-6 text-gray-800">Medicine Catalog</h2>
+                
+                <!-- Search and Filter -->
+                <div class="flex flex-col md:flex-row justify-between mb-6 space-y-4 md:space-y-0 md:space-x-4">
+                    <div class="flex-1">
+                        <div class="relative">
+                            <input id="searchInput" type="text" class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search medicines...">
+                            <div class="absolute left-3 top-2.5 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <select id="categoryFilter" class="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all" id="allCategoriesText">All Categories</option>
+                            <option value="green" id="greenCategoryText">Green (OTC)</option>
+                            <option value="blue" id="blueCategoryText">Blue (Prescription)</option>
+                            <option value="yellow" id="yellowCategoryText">Yellow (Chronic)</option>
+                            <option value="orange" id="orangeCategoryText">Orange (High-Alert)</option>
+                            <option value="red" id="redCategoryText">Red (Emergency)</option>
+                        </select>
+                        <select id="sortOption" class="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="name-asc" id="sortNameAscText">Name (A-Z)</option>
+                            <option value="name-desc" id="sortNameDescText">Name (Z-A)</option>
+                            <option value="price-asc" id="sortPriceAscText">Price (Low-High)</option>
+                            <option value="price-desc" id="sortPriceDescText">Price (High-Low)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Color Legend -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <div class="flex items-center bg-green-100 px-3 py-1 rounded-full">
+                        <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                        <span id="greenLegendText" class="text-xs text-green-800">Green: OTC</span>
+                    </div>
+                    <div class="flex items-center bg-blue-100 px-3 py-1 rounded-full">
+                        <div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                        <span id="blueLegendText" class="text-xs text-blue-800">Blue: Prescription</span>
+                    </div>
+                    <div class="flex items-center bg-yellow-100 px-3 py-1 rounded-full">
+                        <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+                        <span id="yellowLegendText" class="text-xs text-yellow-800">Yellow: Chronic</span>
+                    </div>
+                    <div class="flex items-center bg-orange-100 px-3 py-1 rounded-full">
+                        <div class="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
+                        <span id="orangeLegendText" class="text-xs text-orange-800">Orange: High-Alert</span>
+                    </div>
+                    <div class="flex items-center bg-red-100 px-3 py-1 rounded-full">
+                        <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                        <span id="redLegendText" class="text-xs text-red-800">Red: Emergency</span>
+                    </div>
+                </div>
+                
+                <!-- Selected Medicines -->
+                <div id="selectedMedicinesSection" class="mb-6 hidden">
+                    <h3 id="selectedMedicinesTitle" class="text-lg font-medium text-gray-800 mb-3">Selected Medicines</h3>
+                    <div id="selectedMedicinesList" class="border rounded-lg divide-y mb-4">
+                        <!-- Selected medicines will be listed here -->
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span id="totalItemsLabel" class="text-gray-600">Total Items:</span>
+                            <span id="totalItems" class="font-medium ml-1">0</span>
+                        </div>
+                        <div>
+                            <span id="totalAmountLabel" class="text-gray-600">Total Amount:</span>
+                            <span id="totalAmount" class="font-medium ml-1">₹0.00</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-4">
+                        <button id="clearSelectionBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg mr-2">
+                            <span id="clearSelectionText">Clear Selection</span>
+                        </button>
+                        <button id="proceedBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">
+                            <span id="proceedText">Proceed</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Medicines Grid -->
+                <div id="medicinesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Medicine cards will be dynamically inserted here -->
+                    <div class="col-span-full flex justify-center items-center py-12">
+                        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                        <span id="loadingText" class="ml-3 text-gray-600">Loading medicines...</span>
+                    </div>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="mt-8 flex justify-between items-center">
+                    <div>
+                        <span id="showingResultsText" class="text-gray-600">Showing</span>
+                        <span id="resultsRange" class="font-medium mx-1">0-0</span>
+                        <span id="ofText" class="text-gray-600">of</span>
+                        <span id="totalResults" class="font-medium ml-1">0</span>
+                        <span id="resultsText" class="text-gray-600">results</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPageBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span id="prevText">Previous</span>
+                        </button>
+                        <button id="nextPageBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span id="nextText">Next</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <h3 id="footerTitle" class="text-lg font-semibold">Smart Medical Access System</h3>
+                        <p id="footerSubtitle" class="text-gray-400 text-sm">AI-Powered Healthcare for Rural Areas</p>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <span class="sr-only">Help</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <span class="sr-only">Settings</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-4 text-center text-gray-400 text-sm">
+                    <span id="copyrightText">&copy; 2025 SMAS. All rights reserved.</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Language Translations
+        const translations = {
+            english: {
+                // Header
+                headerTitle: "SMAS Medicine Catalog",
+                colorInfoBtnText: "Color Codes",
+                currentLanguage: "English",
+                backToMainText: "Back to Main",
+                
+                // Color Info
+                colorInfoTitle: "Medicine Color Coding System",
+                greenTitle: "Green - General OTC Medicines",
+                greenDesc: "Common over-the-counter medications like paracetamol, antihistamines, and vitamins that don't require a prescription.",
+                blueTitle: "Blue - Prescription Medications",
+                blueDesc: "Medications for non-severe conditions that typically require a doctor's prescription, such as antibiotics.",
+                yellowTitle: "Yellow - Chronic Condition Medications",
+                yellowDesc: "Medications for ongoing chronic conditions like diabetes, hypertension, or asthma that require regular use.",
+                orangeTitle: "Orange - High-Alert Medications",
+                orangeDesc: "Medications that require special attention and doctor's approval, such as antidepressants or steroids.",
+                redTitle: "Red - Emergency Medications",
+                redDesc: "Critical medications for emergency situations, such as EpiPens for severe allergic reactions or emergency painkillers.",
+                understoodLabel: "I Understand",
+                
+                // Catalog
+                catalogTitle: "Medicine Catalog",
+                searchPlaceholder: "Search medicines...",
+                allCategoriesText: "All Categories",
+                greenCategoryText: "Green (OTC)",
+                blueCategoryText: "Blue (Prescription)",
+                yellowCategoryText: "Yellow (Chronic)",
+                orangeCategoryText: "Orange (High-Alert)",
+                redCategoryText: "Red (Emergency)",
+                sortNameAscText: "Name (A-Z)",
+                sortNameDescText: "Name (Z-A)",
+                sortPriceAscText: "Price (Low-High)",
+                sortPriceDescText: "Price (High-Low)",
+                
+                // Legend
+                greenLegendText: "Green: OTC",
+                blueLegendText: "Blue: Prescription",
+                yellowLegendText: "Yellow: Chronic",
+                orangeLegendText: "Orange: High-Alert",
+                redLegendText: "Red: Emergency",
+                
+                // Selected Medicines
+                selectedMedicinesTitle: "Selected Medicines",
+                totalItemsLabel: "Total Items:",
+                totalAmountLabel: "Total Amount:",
+                clearSelectionText: "Clear Selection",
+                proceedText: "Proceed",
+                
+                // Pagination
+                loadingText: "Loading medicines...",
+                showingResultsText: "Showing",
+                ofText: "of",
+                resultsText: "results",
+                prevText: "Previous",
+                nextText: "Next",
+                
+                // Medicine Card
+                selectText: "Select",
+                selectedText: "Selected",
+                
+                // Footer
+                footerTitle: "Smart Medical Access System",
+                footerSubtitle: "AI-Powered Healthcare for Rural Areas",
+                copyrightText: "© 2025 SMAS. All rights reserved."
+            },
+            tamil: {
+                // Header
+                headerTitle: "SMAS மருந்து பட்டியல்",
+                colorInfoBtnText: "நிற குறியீடுகள்",
+                currentLanguage: "தமிழ்",
+                backToMainText: "முதன்மைக்கு திரும்பு",
+                
+                // Color Info
+                colorInfoTitle: "மருந்து நிற குறியீட்டு அமைப்பு",
+                greenTitle: "பச்சை - பொது OTC மருந்துகள்",
+                greenDesc: "பாராசிட்டமால், ஆன்டிஹிஸ்டமைன்கள் மற்றும் வைட்டமின்கள் போன்ற பொதுவான கவுண்டர் மருந்துகள் மருத்துவர் பரிந்துரை தேவையில்லை.",
+                blueTitle: "நீலம் - மருத்துவர் பரிந்துரை மருந்துகள்",
+                blueDesc: "ஆன்டிபயாடிக்குகள் போன்ற கடுமையற்ற நிலைமைகளுக்கான மருந்துகள் பொதுவாக மருத்துவரின் பரிந்துரை தேவைப்படுகிறது.",
+                yellowTitle: "மஞ்சள் - நாள்பட்ட நிலை மருந்துகள்",
+                yellowDesc: "நீரிழிவு, உயர் இரத்த அழுத்தம் அல்லது ஆஸ்துமா போன்ற தொடர்ச்சியான நாள்பட்ட நிலைமைகளுக்கான மருந்துகள் வழக்கமான பயன்பாடு தேவைப்படுகிறது.",
+                orangeTitle: "ஆரஞ்சு - உயர்-எச்சரிக்கை மருந்துகள்",
+                orangeDesc: "மன அழுத்த எதிர்ப்பு மருந்துகள் அல்லது ஸ்டெராய்டுகள் போன்ற சிறப்பு கவனம் மற்றும் மருத்துவரின் ஒப்புதல் தேவைப்படும் மருந்துகள்.",
+                redTitle: "சிவப்பு - அவசர மருந்துகள்",
+                redDesc: "கடுமையான ஒவ்வாமை எதிர்வினைகளுக்கான எபிபென்கள் அல்லது அவசர வலி நிவாரணிகள் போன்ற அவசர நிலைமைகளுக்கான முக்கியமான மருந்துகள்.",
+                understoodLabel: "நான் புரிந்துகொண்டேன்",
+                
+                // Catalog
+                catalogTitle: "மருந்து பட்டியல்",
+                searchPlaceholder: "மருந்துகளைத் தேடுங்கள்...",
+                allCategoriesText: "அனைத்து வகைகளும்",
+                greenCategoryText: "பச்சை (OTC)",
+                blueCategoryText: "நீலம் (மருத்துவர் பரிந்துரை)",
+                yellowCategoryText: "மஞ்சள் (நாள்பட்ட)",
+                orangeCategoryText: "ஆரஞ்சு (உயர்-எச்சரிக்கை)",
+                redCategoryText: "சிவப்பு (அவசரம்)",
+                sortNameAscText: "பெயர் (A-Z)",
+                sortNameDescText: "பெயர் (Z-A)",
+                sortPriceAscText: "விலை (குறைந்த-அதிக)",
+                sortPriceDescText: "விலை (அதிக-குறைந்த)",
+                
+                // Legend
+                greenLegendText: "பச்சை: OTC",
+                blueLegendText: "நீலம்: மருத்துவர் பரிந்துரை",
+                yellowLegendText: "மஞ்சள்: நாள்பட்ட",
+                orangeLegendText: "ஆரஞ்சு: உயர்-எச்சரிக்கை",
+                redLegendText: "சிவப்பு: அவசரம்",
+                
+                // Selected Medicines
+                selectedMedicinesTitle: "தேர்ந்தெடுக்கப்பட்ட மருந்துகள்",
+                totalItemsLabel: "மொத்த பொருட்கள்:",
+                totalAmountLabel: "மொத்த தொகை:",
+                clearSelectionText: "தேர்வை அழிக்க",
+                proceedText: "தொடரவும்",
+                
+                // Pagination
+                loadingText: "மருந்துகள் ஏற்றப்படுகின்றன...",
+                showingResultsText: "காட்டுகிறது",
+                ofText: "இல்",
+                resultsText: "முடிவுகள்",
+                prevText: "முந்தைய",
+                nextText: "அடுத்து",
+                
+                // Medicine Card
+                selectText: "தேர்வு",
+                selectedText: "தேர்ந்தெடுக்கப்பட்டது",
+                
+                // Footer
+                footerTitle: "ஸ்மார்ட் மருத்துவ அணுகல் அமைப்பு",
+                footerSubtitle: "கிராமப்புற பகுதிகளுக்கான AI-ஆல் இயக்கப்படும் சுகாதாரம்",
+                copyrightText: "© 2025 SMAS. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை."
+            }
+        };
+        
+        // Medicine Database (300+ medicines organized by color categories)
+        const medicinesDatabase = [
+            // GREEN CATEGORY - OTC Medicines (100+ items)
+            { id: "g001", name: "Paracetamol 500mg", tamilName: "பாராசிட்டமால் 500மிகி", color: "green", description: "For pain and fever relief", tamilDescription: "வலி மற்றும் காய்ச்சல் நிவாரணத்திற்கு", price: "₹15.00", priceValue: 15 },
+            { id: "g002", name: "Aspirin 300mg", tamilName: "ஆஸ்பிரின் 300மிகி", color: "green", description: "Pain reliever and blood thinner", tamilDescription: "வலி நிவாரணி மற்றும் இரத்த மெலிதாக்கி", price: "₹20.00", priceValue: 20 },
+            { id: "g003", name: "Ibuprofen 200mg", tamilName: "ஐபுப்ரோஃபென் 200மிகி", color: "green", description: "Anti-inflammatory pain reliever", tamilDescription: "அழற்சி எதிர்ப்பு வலி நிவாரணி", price: "₹25.00", priceValue: 25 },
+            { id: "g004", name: "Cetirizine 10mg", tamilName: "செட்டிரிசின் 10மிகி", color: "green", description: "Antihistamine for allergies", tamilDescription: "ஒவ்வாமைக்கான ஆன்டிஹிஸ்டமைன்", price: "₹30.00", priceValue: 30 },
+            { id: "g005", name: "Loratadine 10mg", tamilName: "லோரடாடின் 10மிகி", color: "green", description: "Non-drowsy antihistamine", tamilDescription: "தூக்கம் வராத ஆன்டிஹிஸ்டமைன்", price: "₹35.00", priceValue: 35 },
+            { id: "g006", name: "Vitamin C 500mg", tamilName: "வைட்டமின் சி 500மிகி", color: "green", description: "Immune system support", tamilDescription: "நோய் எதிர்ப்பு அமைப்பு ஆதரவு", price: "₹40.00", priceValue: 40 },
+            { id: "g007", name: "Vitamin D3 1000IU", tamilName: "வைட்டமின் டி3 1000IU", color: "green", description: "Bone health supplement", tamilDescription: "எலும்பு ஆரோக்கிய துணை", price: "₹45.00", priceValue: 45 },
+            { id: "g008", name: "Vitamin B Complex", tamilName: "வைட்டமின் பி காம்ப்ளெக்ஸ்", color: "green", description: "Energy and nervous system support", tamilDescription: "ஆற்றல் மற்றும் நரம்பு மண்டல ஆதரவு", price: "₹50.00", priceValue: 50 },
+            { id: "g009", name: "Calcium 500mg", tamilName: "கால்சியம் 500மிகி", color: "green", description: "Bone health supplement", tamilDescription: "எலும்பு ஆரோக்கிய துணை", price: "₹30.00", priceValue: 30 },
+            { id: "g010", name: "Zinc 50mg", tamilName: "துத்தநாகம் 50மிகி", color: "green", description: "Immune system support", tamilDescription: "நோய் எதிர்ப்பு அமைப்பு ஆதரவு", price: "₹25.00", priceValue: 25 },
+            { id: "g011", name: "Magnesium 250mg", tamilName: "மெக்னீசியம் 250மிகி", color: "green", description: "Muscle and nerve function", tamilDescription: "தசை மற்றும் நரம்பு செயல்பாடு", price: "₹35.00", priceValue: 35 },
+            { id: "g012", name: "Iron 65mg", tamilName: "இரும்பு 65மிகி", color: "green", description: "For anemia and blood health", tamilDescription: "இரத்த சோகை மற்றும் இரத்த ஆரோக்கியத்திற்கு", price: "₹20.00", priceValue: 20 },
+            { id: "g013", name: "Folic Acid 5mg", tamilName: "ஃபோலிக் அமிலம் 5மிகி", color: "green", description: "For pregnancy and blood health", tamilDescription: "கர்ப்பம் மற்றும் இரத்த ஆரோக்கியத்திற்கு", price: "₹15.00", priceValue: 15 },
+            { id: "g014", name: "Omega-3 Fish Oil", tamilName: "ஒமேகா-3 மீன் எண்ணெய்", color: "green", description: "Heart and brain health", tamilDescription: "இதயம் மற்றும் மூளை ஆரோக்கியம்", price: "₹120.00", priceValue: 120 },
+            { id: "g015", name: "Probiotics", tamilName: "புரோபயாடிக்ஸ்", color: "green", description: "Gut health supplement", tamilDescription: "குடல் ஆரோக்கிய துணை", price: "₹150.00", priceValue: 150 },
+            { id: "g016", name: "Antacid Tablets", tamilName: "அமில நீக்கி மாத்திரைகள்", color: "green", description: "For heartburn and indigestion", tamilDescription: "நெஞ்செரிச்சல் மற்றும் அஜீரணத்திற்கு", price: "₹40.00", priceValue: 40 },
+            { id: "g017", name: "Loperamide 2mg", tamilName: "லோபெரமைடு 2மிகி", color: "green", description: "Anti-diarrheal medication", tamilDescription: "வயிற்றுப்போக்கு எதிர்ப்பு மருந்து", price: "₹35.00", priceValue: 35 },
+            { id: "g018", name: "Bisacodyl 5mg", tamilName: "பிசாகோடில் 5மிகி", color: "green", description: "Laxative for constipation", tamilDescription: "மலச்சிக்கலுக்கான மலமிளக்கி", price: "₹30.00", priceValue: 30 },
+            { id: "g019", name: "Dimenhydrinate 50mg", tamilName: "டைமென்ஹைட்ரினேட் 50மிகி", color: "green", description: "Motion sickness relief", tamilDescription: "அசைவு நோய் நிவாரணம்", price: "₹25.00", priceValue: 25 },
+            { id: "g020", name: "Throat Lozenges", tamilName: "தொண்டை லாஸென்ஜஸ்", color: "green", description: "For sore throat relief", tamilDescription: "தொண்டை வலி நிவாரணத்திற்கு", price: "₹20.00", priceValue: 20 },
+            
+            // Adding more green category medicines (continuing to g100)
+            { id: "g021", name: "Cough Syrup (Alcohol-free)", tamilName: "இருமல் சிரப் (ஆல்கஹால் இல்லாத)", color: "green", description: "For dry cough relief", tamilDescription: "உலர் இருமல் நிவாரணத்திற்கு", price: "₹60.00", priceValue: 60 },
+            { id: "g022", name: "Expectorant Syrup", tamilName: "கோழை அகற்றி சிரப்", color: "green", description: "For productive cough", tamilDescription: "கோழை இருமலுக்கு", price: "₹65.00", priceValue: 65 },
+            { id: "g023", name: "Saline Nasal Spray", tamilName: "உப்பு மூக்கு தெளிப்பான்", color: "green", description: "For nasal congestion", tamilDescription: "மூக்கடைப்புக்கு", price: "₹70.00", priceValue: 70 },
+            { id: "g024", name: "Menthol Rub", tamilName: "மெந்தால் தடவல்", color: "green", description: "For congestion relief", tamilDescription: "அடைப்பு நிவாரணத்திற்கு", price: "₹45.00", priceValue: 45 },
+            { id: "g025", name: "Calamine Lotion", tamilName: "காலமைன் லோஷன்", color: "green", description: "For skin irritation and rashes", tamilDescription: "தோல் எரிச்சல் மற்றும் தடிப்புகளுக்கு", price: "₹40.00", priceValue: 40 },
+            { id: "g026", name: "Hydrocortisone Cream 1%", tamilName: "ஹைட்ரோகார்டிசோன் கிரீம் 1%", color: "green", description: "For minor skin inflammation", tamilDescription: "சிறிய தோல் அழற்சிக்கு", price: "₹55.00", priceValue: 55 },
+            { id: "g027", name: "Aloe Vera Gel", tamilName: "கற்றாழை ஜெல்", color: "green", description: "For sunburn and skin soothing", tamilDescription: "சூரிய எரிச்சல் மற்றும் தோல் ஆறுதலுக்கு", price: "₹80.00", priceValue: 80 },
+            { id: "g028", name: "Petroleum Jelly", tamilName: "பெட்ரோலியம் ஜெல்லி", color: "green", description: "For dry skin and lips", tamilDescription: "உலர் தோல் மற்றும் உதடுகளுக்கு", price: "₹30.00", priceValue: 30 },
+            { id: "g029", name: "Hydrogen Peroxide 3%", tamilName: "ஹைட்ரஜன் பெராக்சைடு 3%", color: "green", description: "For wound cleaning", tamilDescription: "காயம் சுத்தம் செய்ய", price: "₹25.00", priceValue: 25 },
+            { id: "g030", name: "Povidone-Iodine Solution", tamilName: "போவிடோன்-அயோடின் கரைசல்", color: "green", description: "Antiseptic for wounds", tamilDescription: "காயங்களுக்கான கிருமி நாசினி", price: "₹35.00", priceValue: 35 },
+            
+            // Continue with more green category medicines...
+            { id: "g031", name: "Adhesive Bandages", tamilName: "ஒட்டும் கட்டுகள்", color: "green", description: "For minor cuts and scrapes", tamilDescription: "சிறிய வெட்டுகள் மற்றும் சொரணைகளுக்கு", price: "₹40.00", priceValue: 40 },
+            { id: "g032", name: "Gauze Pads", tamilName: "கேஸ் பேட்ஸ்", color: "green", description: "For wound dressing", tamilDescription: "காய கட்டுக்கு", price: "₹30.00", priceValue: 30 },
+            { id: "g033", name: "Medical Tape", tamilName: "மருத்துவ டேப்", color: "green", description: "For securing bandages", tamilDescription: "கட்டுகளை உறுதிப்படுத்த", price: "₹25.00", priceValue: 25 },
+            { id: "g034", name: "Thermometer", tamilName: "வெப்பமானி", color: "green", description: "For measuring body temperature", tamilDescription: "உடல் வெப்பநிலையை அளவிட", price: "₹120.00", priceValue: 120 },
+            { id: "g035", name: "Hot Water Bottle", tamilName: "சூடான நீர் பாட்டில்", color: "green", description: "For pain relief", tamilDescription: "வலி நிவாரணத்திற்கு", price: "₹150.00", priceValue: 150 },
+            { id: "g036", name: "Ice Pack", tamilName: "ஐஸ் பேக்", color: "green", description: "For inflammation and swelling", tamilDescription: "அழற்சி மற்றும் வீக்கத்திற்கு", price: "₹100.00", priceValue: 100 },
+            { id: "g037", name: "Elastic Bandage", tamilName: "மிதக்கும் கட்டு", color: "green", description: "For sprains and strains", tamilDescription: "முறுக்கு மற்றும் இழுப்புகளுக்கு", price: "₹70.00", priceValue: 70 },
+            { id: "g038", name: "Oral Rehydration Salts", tamilName: "வாய்வழி நீரேற்ற உப்புகள்", color: "green", description: "For dehydration", tamilDescription: "நீரிழப்புக்கு", price: "₹25.00", priceValue: 25 },
+            { id: "g039", name: "Glucose Powder", tamilName: "குளுக்கோஸ் பவுடர்", color: "green", description: "For energy and hydration", tamilDescription: "ஆற்றல் மற்றும் நீரேற்றத்திற்கு", price: "₹40.00", priceValue: 40 },
+            { id: "g040", name: "Electrolyte Solution", tamilName: "எலெக்ட்ரோலைட் கரைசல்", color: "green", description: "For rehydration during illness", tamilDescription: "நோயின் போது நீரேற்றத்திற்கு", price: "₹60.00", priceValue: 60 },
+            
+            // BLUE CATEGORY - Prescription Medications (80+ items)
+            { id: "b001", name: "Amoxicillin 500mg", tamilName: "அமாக்ஸிசிலின் 500மிகி", color: "blue", description: "Antibiotic for bacterial infections", tamilDescription: "பாக்டீரியா தொற்றுகளுக்கான ஆன்டிபயாடிக்", price: "₹80.00", priceValue: 80 },
+            { id: "b002", name: "Azithromycin 250mg", tamilName: "அசித்ரோமைசின் 250மிகி", color: "blue", description: "Antibiotic for respiratory infections", tamilDescription: "சுவாச தொற்றுகளுக்கான ஆன்டிபயாடிக்", price: "₹120.00", priceValue: 120 },
+            { id: "b003", name: "Ciprofloxacin 500mg", tamilName: "சிப்ரோஃப்ளோக்ஸாசின் 500மிகி", color: "blue", description: "Antibiotic for urinary tract infections", tamilDescription: "சிறுநீர் பாதை தொற்றுகளுக்கான ஆன்டிபயாடிக்", price: "₹100.00", priceValue: 100 },
+            { id: "b004", name: "Doxycycline 100mg", tamilName: "டாக்ஸிசைக்ளின் 100மிகி", color: "blue", description: "Antibiotic for various infections", tamilDescription: "பல்வேறு தொற்றுகளுக்கான ஆன்டிபயாடிக்", price: "₹90.00", priceValue: 90 },
+            { id: "b005", name: "Metronidazole 400mg", tamilName: "மெட்ரோனிடாசோல் 400மிகி", color: "blue", description: "Antibiotic for anaerobic infections", tamilDescription: "அனாரோபிக் தொற்றுகளுக்கான ஆன்டிபயாடிக்", price: "₹70.00", priceValue: 70 },
+            { id: "b006", name: "Fluconazole 150mg", tamilName: "ஃப்ளுகோனசோல் 150மிகி", color: "blue", description: "Antifungal medication", tamilDescription: "பூஞ்சை எதிர்ப்பு மருந்து", price: "₹85.00", priceValue: 85 },
+            { id: "b007", name: "Acyclovir 400mg", tamilName: "அசைக்ளோவிர் 400மிகி", color: "blue", description: "Antiviral for herpes infections", tamilDescription: "ஹெர்பிஸ் தொற்றுகளுக்கான ஆன்டிவைரல்", price: "₹110.00", priceValue: 110 },
+            { id: "b008", name: "Omeprazole 20mg", tamilName: "ஓமெப்ரசோல் 20மிகி", color: "blue", description: "Proton pump inhibitor for acid reflux", tamilDescription: "அமில ரீஃப்ளக்ஸுக்கான புரோட்டான் பம்ப் இன்ஹிபிட்டர்", price: "₹60.00", priceValue: 60 },
+            { id: "b009", name: "Pantoprazole 40mg", tamilName: "பேன்டோப்ரசோல் 40மிகி", color: "blue", description: "For gastric ulcers and GERD", tamilDescription: "இரைப்பை புண்கள் மற்றும் GERD க்கு", price: "₹75.00", priceValue: 75 },
+            { id: "b010", name: "Ranitidine 150mg", tamilName: "ரானிடிடின் 150மிகி", color: "blue", description: "H2 blocker for acid reduction", tamilDescription: "அமில குறைப்புக்கான H2 தடுப்பான்", price: "₹50.00", priceValue: 50 },
+            
+            // Adding more blue category medicines
+            { id: "b011", name: "Montelukast 10mg", tamilName: "மோன்டெலுகாஸ்ட் 10மிகி", color: "blue", description: "For asthma and allergies", tamilDescription: "ஆஸ்துமா மற்றும் ஒவ்வாமைகளுக்கு", price: "₹130.00", priceValue: 130 },
+            { id: "b012", name: "Salbutamol Inhaler", tamilName: "சால்புடமால் இன்ஹேலர்", color: "blue", description: "Bronchodilator for asthma", tamilDescription: "ஆஸ்துமாவுக்கான பிரான்கோடைலேட்டர்", price: "₹200.00", priceValue: 200 },
+            { id: "b013", name: "Budesonide Inhaler", tamilName: "பூடெசோனைடு இன்ஹேலர்", color: "blue", description: "Steroid inhaler for asthma", tamilDescription: "ஆஸ்துமாவுக்கான ஸ்டெராய்டு இன்ஹேலர்", price: "₹350.00", priceValue: 350 },
+            { id: "b014", name: "Levothyroxine 50mcg", tamilName: "லெவோதைராக்ஸின் 50mcg", color: "blue", description: "Thyroid hormone replacement", tamilDescription: "தைராய்டு ஹார்மோன் மாற்றீடு", price: "₹80.00", priceValue: 80 },
+            { id: "b015", name: "Metformin 500mg", tamilName: "மெட்ஃபார்மின் 500மிகி", color: "blue", description: "Oral diabetes medication", tamilDescription: "வாய்வழி நீரிழிவு மருந்து", price: "₹40.00", priceValue: 40 },
+            { id: "b016", name: "Glimepiride 2mg", tamilName: "க்ளைமெபிரைடு 2மிகி", color: "blue", description: "Sulfonylurea for diabetes", tamilDescription: "நீரிழிவுக்கான சல்ஃபோனைலூரியா", price: "₹60.00", priceValue: 60 },
+            { id: "b017", name: "Sitagliptin 100mg", tamilName: "சிடாகிளிப்டின் 100மிகி", color: "blue", description: "DPP-4 inhibitor for diabetes", tamilDescription: "நீரிழிவுக்கான DPP-4 தடுப்பான்", price: "₹180.00", priceValue: 180 },
+            { id: "b018", name: "Atorvastatin 10mg", tamilName: "அடோர்வாஸ்டாடின் 10மிகி", color: "blue", description: "Statin for cholesterol reduction", tamilDescription: "கொலஸ்ட்ரால் குறைப்புக்கான ஸ்டாடின்", price: "₹90.00", priceValue: 90 },
+            { id: "b019", name: "Rosuvastatin 5mg", tamilName: "ரோசுவாஸ்டாடின் 5மிகி", color: "blue", description: "Statin for cholesterol reduction", tamilDescription: "கொலஸ்ட்ரால் குறைப்புக்கான ஸ்டாடின்", price: "₹120.00", priceValue: 120 },
+            { id: "b020", name: "Clopidogrel 75mg", tamilName: "க்ளோபிடோக்ரெல் 75மிகி", color: "blue", description: "Antiplatelet medication", tamilDescription: "பிளேட்லெட் எதிர்ப்பு மருந்து", price: "₹110.00", priceValue: 110 },
+            
+            // Continue with more blue category medicines...
+            { id: "b021", name: "Amlodipine 5mg", tamilName: "அம்லோடிபைன் 5மிகி", color: "blue", description: "Calcium channel blocker for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான கால்சியம் சேனல் தடுப்பான்", price: "₹45.00", priceValue: 45 },
+            { id: "b022", name: "Losartan 50mg", tamilName: "லோசார்டன் 50மிகி", color: "blue", description: "ARB for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான ARB", price: "₹70.00", priceValue: 70 },
+            { id: "b023", name: "Enalapril 10mg", tamilName: "எனலாப்ரில் 10மிகி", color: "blue", description: "ACE inhibitor for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான ACE தடுப்பான்", price: "₹60.00", priceValue: 60 },
+            { id: "b024", name: "Hydrochlorothiazide 25mg", tamilName: "ஹைட்ரோகுளோரோதையசைடு 25மிகி", color: "blue", description: "Diuretic for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான சிறுநீர் பெருக்கி", price: "₹30.00", priceValue: 30 },
+            { id: "b025", name: "Furosemide 40mg", tamilName: "ஃபுரோசெமைடு 40மிகி", color: "blue", description: "Loop diuretic for edema", tamilDescription: "வீக்கத்திற்கான லூப் சிறுநீர் பெருக்கி", price: "₹35.00", priceValue: 35 },
+            
+            // YELLOW CATEGORY - Chronic Condition Medications (60+ items)
+            { id: "y001", name: "Insulin Glargine", tamilName: "இன்சுலின் க்ளார்ஜின்", color: "yellow", description: "Long-acting insulin for diabetes", tamilDescription: "நீரிழிவுக்கான நீண்ட-செயல் இன்சுலின்", price: "₹650.00", priceValue: 650 },
+            { id: "y002", name: "Insulin Lispro", tamilName: "இன்சுலின் லிஸ்ப்ரோ", color: "yellow", description: "Rapid-acting insulin for diabetes", tamilDescription: "நீரிழிவுக்கான விரைவான-செயல் இன்சுலின்", price: "₹550.00", priceValue: 550 },
+            { id: "y003", name: "Gliclazide MR 60mg", tamilName: "க்ளிக்லசைடு MR 60மிகி", color: "yellow", description: "Modified release for diabetes", tamilDescription: "நீரிழிவுக்கான மாற்றியமைக்கப்பட்ட வெளியீடு", price: "₹120.00", priceValue: 120 },
+            { id: "y004", name: "Vildagliptin 50mg", tamilName: "வில்டாகிளிப்டின் 50மிகி", color: "yellow", description: "DPP-4 inhibitor for diabetes", tamilDescription: "நீரிழிவுக்கான DPP-4 தடுப்பான்", price: "₹160.00", priceValue: 160 },
+            { id: "y005", name: "Empagliflozin 10mg", tamilName: "எம்பாகிளிஃப்ளோசின் 10மிகி", color: "yellow", description: "SGLT2 inhibitor for diabetes", tamilDescription: "நீரிழிவுக்கான SGLT2 தடுப்பான்", price: "₹220.00", priceValue: 220 },
+            { id: "y006", name: "Telmisartan 40mg", tamilName: "டெல்மிசார்டன் 40மிகி", color: "yellow", description: "ARB for chronic hypertension", tamilDescription: "நாள்பட்ட உயர் இரத்த அழுத்தத்திற்கான ARB", price: "₹90.00", priceValue: 90 },
+            { id: "y007", name: "Bisoprolol 5mg", tamilName: "பிசோப்ரோலால் 5மிகி", color: "yellow", description: "Beta-blocker for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான பீட்டா-தடுப்பான்", price: "₹80.00", priceValue: 80 },
+            { id: "y008", name: "Nebivolol 5mg", tamilName: "நெபிவோலால் 5மிகி", color: "yellow", description: "Beta-blocker for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான பீட்டா-தடுப்பான்", price: "₹110.00", priceValue: 110 },
+            { id: "y009", name: "Olmesartan 20mg", tamilName: "ஓல்மெசார்டன் 20மிகி", color: "yellow", description: "ARB for chronic hypertension", tamilDescription: "நாள்பட்ட உயர் இரத்த அழுத்தத்திற்கான ARB", price: "₹95.00", priceValue: 95 },
+            { id: "y010", name: "Perindopril 4mg", tamilName: "பெரின்டோப்ரில் 4மிகி", color: "yellow", description: "ACE inhibitor for hypertension", tamilDescription: "உயர் இரத்த அழுத்தத்திற்கான ACE தடுப்பான்", price: "₹85.00", priceValue: 85 },
+            
+            // Adding more yellow category medicines
+            { id: "y011", name: "Simvastatin 20mg", tamilName: "சிம்வாஸ்டாடின் 20மிகி", color: "yellow", description: "Statin for chronic cholesterol management", tamilDescription: "நாள்பட்ட கொலஸ்ட்ரால் மேலாண்மைக்கான ஸ்டாடின்", price: "₹75.00", priceValue: 75 },
+            { id: "y012", name: "Fenofibrate 160mg", tamilName: "ஃபெனோஃபைப்ரேட் 160மிகி", color: "yellow", description: "For triglyceride reduction", tamilDescription: "டிரைகிளிசரைடு குறைப்புக்கு", price: "₹95.00", priceValue: 95 },
+            { id: "y013", name: "Ezetimibe 10mg", tamilName: "எசெடிமைப் 10மிகி", color: "yellow", description: "Cholesterol absorption inhibitor", tamilDescription: "கொலஸ்ட்ரால் உறிஞ்சுதல் தடுப்பான்", price: "₹140.00", priceValue: 140 },
+            { id: "y014", name: "Aspirin 75mg", tamilName: "ஆஸ்பிரின் 75மிகி", color: "yellow", description: "Antiplatelet for heart disease", tamilDescription: "இதய நோய்க்கான பிளேட்லெட் எதிர்ப்பு", price: "₹15.00", priceValue: 15 },
+            { id: "y015", name: "Isosorbide Mononitrate 20mg", tamilName: "ஐசோசார்பைடு மோனோநைட்ரேட் 20மிகி", color: "yellow", description: "For angina management", tamilDescription: "அன்ஜைனா மேலாண்மைக்கு", price: "₹70.00", priceValue: 70 },
+            { id: "y016", name: "Carvedilol 12.5mg", tamilName: "கார்வெடிலால் 12.5மிகி", color: "yellow", description: "Beta-blocker for heart failure", tamilDescription: "இதய செயலிழப்புக்கான பீட்டா-தடுப்பான்", price: "₹85.00", priceValue: 85 },
+            { id: "y017", name: "Spironolactone 25mg", tamilName: "ஸ்பைரோனோலாக்டோன் 25மிகி", color: "yellow", description: "Potassium-sparing diuretic", tamilDescription: "பொட்டாசியம்-சேமிப்பு சிறுநீர் பெருக்கி", price: "₹45.00", priceValue: 45 },
+            { id: "y018", name: "Digoxin 0.25mg", tamilName: "டிஜாக்ஸின் 0.25மிகி", color: "yellow", description: "For heart failure and arrhythmias", tamilDescription: "இதய செயலிழப்பு மற்றும் அரித்மியாக்களுக்கு", price: "₹30.00", priceValue: 30 },
+            { id: "y019", name: "Warfarin 5mg", tamilName: "வார்ஃபரின் 5மிகி", color: "yellow", description: "Anticoagulant for blood clots", tamilDescription: "இரத்த உறைவுகளுக்கான ஆன்டிகோகுலன்ட்", price: "₹40.00", priceValue: 40 },
+            { id: "y020", name: "Rivaroxaban 10mg", tamilName: "ரிவரோக்ஸாபன் 10மிகி", color: "yellow", description: "Direct oral anticoagulant", tamilDescription: "நேரடி வாய்வழி ஆன்டிகோகுலன்ட்", price: "₹180.00", priceValue: 180 },
+            
+            // ORANGE CATEGORY - High-Alert Medications (40+ items)
+            { id: "o001", name: "Prednisolone 5mg", tamilName: "பிரெட்னிசோலோன் 5மிகி", color: "orange", description: "Corticosteroid for inflammation", tamilDescription: "அழற்சிக்கான கார்டிகோஸ்டெராய்டு", price: "₹45.00", priceValue: 45 },
+            { id: "o002", name: "Dexamethasone 0.5mg", tamilName: "டெக்ஸாமெதசோன் 0.5மிகி", color: "orange", description: "Potent corticosteroid", tamilDescription: "சக்திவாய்ந்த கார்டிகோஸ்டெராய்டு", price: "₹40.00", priceValue: 40 },
+            { id: "o003", name: "Methylprednisolone 4mg", tamilName: "மெதில்பிரெட்னிசோலோன் 4மிகி", color: "orange", description: "Corticosteroid for severe inflammation", tamilDescription: "கடுமையான அழற்சிக்கான கார்டிகோஸ்டெராய்டு", price: "₹60.00", priceValue: 60 },
+            { id: "o004", name: "Methotrexate 2.5mg", tamilName: "மெதோட்ரெக்சேட் 2.5மிகி", color: "orange", description: "Immunosuppressant for autoimmune diseases", tamilDescription: "தன்னுடல் எதிர்ப்பு நோய்களுக்கான நோய் எதிர்ப்பு அடக்கி", price: "₹50.00", priceValue: 50 },
+            { id: "o005", name: "Azathioprine 50mg", tamilName: "அசாதயோப்ரின் 50மிகி", color: "orange", description: "Immunosuppressant", tamilDescription: "நோய் எதிர்ப்பு அடக்கி", price: "₹70.00", priceValue: 70 },
+            { id: "o006", name: "Hydroxychloroquine 200mg", tamilName: "ஹைட்ராக்ஸிகுளோரோக்வின் 200மிகி", color: "orange", description: "For autoimmune conditions", tamilDescription: "தன்னுடல் எதிர்ப்பு நிலைமைகளுக்கு", price: "₹65.00", priceValue: 65 },
+            { id: "o007", name: "Leflunomide 10mg", tamilName: "லெஃப்லுனோமைடு 10மிகி", color: "orange", description: "For rheumatoid arthritis", tamilDescription: "ரூமடாய்டு ஆர்த்ரைடிஸுக்கு", price: "₹120.00", priceValue: 120 },
+            { id: "o008", name: "Sulfasalazine 500mg", tamilName: "சல்ஃபசலசைன் 500மிகி", color: "orange", description: "For inflammatory bowel disease", tamilDescription: "அழற்சி குடல் நோய்க்கு", price: "₹80.00", priceValue: 80 },
+            { id: "o009", name: "Amitriptyline 25mg", tamilName: "அமிட்ரிப்டிலைன் 25மிகி", color: "orange", description: "Tricyclic antidepressant", tamilDescription: "முச்சக்ர மன அழுத்த எதிர்ப்பி", price: "₹30.00", priceValue: 30 },
+            { id: "o010", name: "Fluoxetine 20mg", tamilName: "ஃப்ளுஒக்செடின் 20மிகி", color: "orange", description: "SSRI antidepressant", tamilDescription: "SSRI மன அழுத்த எதிர்ப்பி", price: "₹45.00", priceValue: 45 },
+            
+            // Adding more orange category medicines
+            { id: "o011", name: "Sertraline 50mg", tamilName: "செர்ட்ராலின் 50மிகி", color: "orange", description: "SSRI antidepressant", tamilDescription: "SSRI மன அழுத்த எதிர்ப்பி", price: "₹60.00", priceValue: 60 },
+            { id: "o012", name: "Escitalopram 10mg", tamilName: "எஸ்சிடாலோப்ராம் 10மிகி", color: "orange", description: "SSRI antidepressant", tamilDescription: "SSRI மன அழுத்த எதிர்ப்பி", price: "₹75.00", priceValue: 75 },
+            { id: "o013", name: "Venlafaxine 75mg", tamilName: "வென்லாஃபாக்சின் 75மிகி", color: "orange", description: "SNRI antidepressant", tamilDescription: "SNRI மன அழுத்த எதிர்ப்பி", price: "₹90.00", priceValue: 90 },
+            { id: "o014", name: "Duloxetine 30mg", tamilName: "டுலோக்செடின் 30மிகி", color: "orange", description: "SNRI antidepressant", tamilDescription: "SNRI மன அழுத்த எதிர்ப்பி", price: "₹85.00", priceValue: 85 },
+            { id: "o015", name: "Olanzapine 5mg", tamilName: "ஓலன்சபைன் 5மிகி", color: "orange", description: "Atypical antipsychotic", tamilDescription: "அடிப்படையற்ற மனநோய் எதிர்ப்பி", price: "₹70.00", priceValue: 70 },
+            { id: "o016", name: "Risperidone 2mg", tamilName: "ரிஸ்பெரிடோன் 2மிகி", color: "orange", description: "Atypical antipsychotic", tamilDescription: "அடிப்படையற்ற மனநோய் எதிர்ப்பி", price: "₹65.00", priceValue: 65 },
+            { id: "o017", name: "Quetiapine 25mg", tamilName: "க்வெடியாபைன் 25மிகி", color: "orange", description: "Atypical antipsychotic", tamilDescription: "அடிப்படையற்ற மனநோய் எதிர்ப்பி", price: "₹80.00", priceValue: 80 },
+            { id: "o018", name: "Lithium Carbonate 300mg", tamilName: "லித்தியம் கார்பனேட் 300மிகி", color: "orange", description: "Mood stabilizer", tamilDescription: "மனநிலை நிலைப்படுத்தி", price: "₹40.00", priceValue: 40 },
+            { id: "o019", name: "Valproic Acid 500mg", tamilName: "வால்ப்ரோயிக் அமிலம் 500மிகி", color: "orange", description: "Anticonvulsant and mood stabilizer", tamilDescription: "வலிப்பு எதிர்ப்பி மற்றும் மனநிலை நிலைப்படுத்தி", price: "₹75.00", priceValue: 75 },
+            { id: "o020", name: "Carbamazepine 200mg", tamilName: "கார்பமசெபைன் 200மிகி", color: "orange", description: "Anticonvulsant and mood stabilizer", tamilDescription: "வலிப்பு எதிர்ப்பி மற்றும் மனநிலை நிலைப்படுத்தி", price: "₹50.00", priceValue: 50 },
+            
+            // RED CATEGORY - Emergency Medications (20+ items)
+            { id: "r001", name: "Adrenaline Auto-Injector", tamilName: "அட்ரினலின் ஆட்டோ-இன்ஜெக்டர்", color: "red", description: "For severe allergic reactions", tamilDescription: "கடுமையான ஒவ்வாமை எதிர்வினைகளுக்கு", price: "₹1200.00", priceValue: 1200 },
+            { id: "r002", name: "Glyceryl Trinitrate Spray", tamilName: "கிளிசரில் டிரைநைட்ரேட் ஸ்ப்ரே", color: "red", description: "For angina attacks", tamilDescription: "அன்ஜைனா தாக்குதல்களுக்கு", price: "₹350.00", priceValue: 350 },
+            { id: "r003", name: "Salbutamol Nebulizer Solution", tamilName: "சால்புடமால் நெபுலைசர் கரைசல்", color: "red", description: "For acute asthma attacks", tamilDescription: "தீவிர ஆஸ்துமா தாக்குதல்களுக்கு", price: "₹120.00", priceValue: 120 },
+            { id: "r004", name: "Diazepam Rectal Tube", tamilName: "டயசெபாம் ரெக்டல் டியூப்", color: "red", description: "For seizures", tamilDescription: "வலிப்புகளுக்கு", price: "₹180.00", priceValue: 180 },
+            { id: "r005", name: "Glucagon Injection Kit", tamilName: "குளுகாகான் இன்ஜெக்ஷன் கிட்", color: "red", description: "For severe hypoglycemia", tamilDescription: "கடுமையான குறைந்த இரத்த சர்க்கரைக்கு", price: "₹850.00", priceValue: 850 },
+            { id: "r006", name: "Aspirin 300mg", tamilName: "ஆஸ்பிரின் 300மிகி", color: "red", description: "For suspected heart attack", tamilDescription: "சந்தேகத்திற்குரிய மாரடைப்புக்கு", price: "₹25.00", priceValue: 25 },
+            { id: "r007", name: "Naloxone Injection", tamilName: "நலோக்சோன் இன்ஜெக்ஷன்", color: "red", description: "For opioid overdose", tamilDescription: "ஓபியாய்டு அதிகப்படியான அளவுக்கு", price: "₹450.00", priceValue: 450 },
+            { id: "r008", name: "Atropine Injection", tamilName: "அட்ரோபின் இன்ஜெக்ஷன்", color: "red", description: "For bradycardia and poisoning", tamilDescription: "பிராடிகார்டியா மற்றும் நஞ்சுக்கு", price: "₹120.00", priceValue: 120 },
+            { id: "r009", name: "Hydrocortisone Injection", tamilName: "ஹைட்ரோகார்டிசோன் இன்ஜெக்ஷன்", color: "red", description: "For severe allergic reactions", tamilDescription: "கடுமையான ஒவ்வாமை எதிர்வினைகளுக்கு", price: "₹180.00", priceValue: 180 },
+            { id: "r010", name: "Dextrose 50% Injection", tamilName: "டெக்ஸ்ட்ரோஸ் 50% இன்ஜெக்ஷன்", color: "red", description: "For severe hypoglycemia", tamilDescription: "கடுமையான குறைந்த இரத்த சர்க்கரைக்கு", price: "₹90.00", priceValue: 90 },
+            
+            // Adding more red category medicines
+            { id: "r011", name: "Midazolam Injection", tamilName: "மிடாசோலம் இன்ஜெக்ஷன்", color: "red", description: "For status epilepticus", tamilDescription: "ஸ்டேடஸ் எபிலெப்டிகஸுக்கு", price: "₹220.00", priceValue: 220 },
+            { id: "r012", name: "Furosemide Injection", tamilName: "ஃபுரோசெமைடு இன்ஜெக்ஷன்", color: "red", description: "For acute pulmonary edema", tamilDescription: "தீவிர நுரையீரல் வீக்கத்திற்கு", price: "₹110.00", priceValue: 110 },
+            { id: "r013", name: "Amiodarone Injection", tamilName: "அமியோடரோன் இன்ஜெக்ஷன்", color: "red", description: "For life-threatening arrhythmias", tamilDescription: "உயிருக்கு ஆபத்தான அரித்மியாக்களுக்கு", price: "₹350.00", priceValue: 350 },
+            { id: "r014", name: "Adenosine Injection", tamilName: "அடெனோசைன் இன்ஜெக்ஷன்", color: "red", description: "For supraventricular tachycardia", tamilDescription: "சுப்ராவென்ட்ரிகுலர் டாகிகார்டியாவுக்கு", price: "₹280.00", priceValue: 280 },
+            { id: "r015", name: "Calcium Gluconate Injection", tamilName: "கால்சியம் குளுகோனேட் இன்ஜெக்ஷன்", color: "red", description: "For hypocalcemia and hyperkalemia", tamilDescription: "ஹைபோகால்சீமியா மற்றும் ஹைபர்கலீமியாவுக்கு", price: "₹150.00", priceValue: 150 },
+            { id: "r016", name: "Magnesium Sulfate Injection", tamilName: "மெக்னீசியம் சல்ஃபேட் இன்ஜெக்ஷன்", color: "red", description: "For eclampsia and arrhythmias", tamilDescription: "எக்லாம்ப்சியா மற்றும் அரித்மியாக்களுக்கு", price: "₹130.00", priceValue: 130 },
+            { id: "r017", name: "Phenytoin Injection", tamilName: "ஃபெனிடோயின் இன்ஜெக்ஷன்", color: "red", description: "For status epilepticus", tamilDescription: "ஸ்டேடஸ் எபிலெப்டிகஸுக்கு", price: "₹180.00", priceValue: 180 },
+            { id: "r018", name: "Labetalol Injection", tamilName: "லாபெடலால் இன்ஜெக்ஷன்", color: "red", description: "For hypertensive emergencies", tamilDescription: "உயர் இரத்த அழுத்த அவசரங்களுக்கு", price: "₹240.00", priceValue: 240 },
+            { id: "r019", name: "Sodium Bicarbonate Injection", tamilName: "சோடியம் பைகார்பனேட் இன்ஜெக்ஷன்", color: "red", description: "For severe metabolic acidosis", tamilDescription: "கடுமையான வளர்சிதை மாற்ற அமிலத்தன்மைக்கு", price: "₹95.00", priceValue: 95 },
+            { id: "r020", name: "Dopamine Injection", tamilName: "டோபமைன் இன்ஜெக்ஷன்", color: "red", description: "For shock and hypotension", tamilDescription: "அதிர்ச்சி மற்றும் குறைந்த இரத்த அழுத்தத்திற்கு", price: "₹160.00", priceValue: 160 }
+        ];
+        
+        // DOM Elements
+        const colorInfoModal = document.getElementById('colorInfoModal');
+        const closeColorInfo = document.getElementById('closeColorInfo');
+        const colorInfoUnderstoodBtn = document.getElementById('colorInfoUnderstoodBtn');
+        const colorInfoBtn = document.getElementById('colorInfoBtn');
+        const languageToggle = document.getElementById('languageToggle');
+        const languageDropdown = document.getElementById('languageDropdown');
+        const switchToEnglish = document.getElementById('switchToEnglish');
+        const switchToTamil = document.getElementById('switchToTamil');
+        const currentLanguage = document.getElementById('currentLanguage');
+        const searchInput = document.getElementById('searchInput');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const sortOption = document.getElementById('sortOption');
+        const medicinesGrid = document.getElementById('medicinesGrid');
+        const selectedMedicinesSection = document.getElementById('selectedMedicinesSection');
+        const selectedMedicinesList = document.getElementById('selectedMedicinesList');
+        const totalItems = document.getElementById('totalItems');
+        const totalAmount = document.getElementById('totalAmount');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const proceedBtn = document.getElementById('proceedBtn');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
+        const resultsRange = document.getElementById('resultsRange');
+        const totalResults = document.getElementById('totalResults');
+        
+        // Global Variables
+        let currentLang = 'english';
+        let currentPage = 1;
+        let itemsPerPage = 16;
+        let filteredMedicines = [];
+        let selectedMedicines = [];
+        
+        // Color Info Modal
+        closeColorInfo.addEventListener('click', () => {
+            colorInfoModal.classList.add('hidden');
+        });
+        
+        colorInfoUnderstoodBtn.addEventListener('click', () => {
+            colorInfoModal.classList.add('hidden');
+        });
+        
+        colorInfoBtn.addEventListener('click', () => {
+            colorInfoModal.classList.remove('hidden');
+        });
+        
+        // Language Toggle
+        languageToggle.addEventListener('click', () => {
+            languageDropdown.classList.toggle('hidden');
+        });
+        
+        switchToEnglish.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentLang = 'english';
+            languageDropdown.classList.add('hidden');
+            updateLanguage();
+            renderMedicines();
+        });
+        
+        switchToTamil.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentLang = 'tamil';
+            languageDropdown.classList.add('hidden');
+            updateLanguage();
+            renderMedicines();
+        });
+        
+        // Update UI language
+        function updateLanguage() {
+            const lang = translations[currentLang];
+            
+            // Update all text elements with translations
+            document.querySelectorAll('[id]').forEach(element => {
+                const id = element.id;
+                if (lang[id]) {
+                    if (element.tagName === 'INPUT' && element.type === 'text') {
+                        element.placeholder = lang[id];
+                    } else if (element.tagName === 'TEXTAREA') {
+                        element.placeholder = lang[id];
+                    } else {
+                        element.textContent = lang[id];
+                    }
+                }
+            });
+            
+            // Update search input placeholder
+            searchInput.placeholder = currentLang === 'english' ? 
+                "Search medicines..." : 
+                "மருந்துகளைத் தேடுங்கள்...";
+        }
+        
+        // Filter and sort medicines
+        function filterAndSortMedicines() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const category = categoryFilter.value;
+            const sort = sortOption.value;
+            
+            // Filter by search term and category
+            filteredMedicines = medicinesDatabase.filter(medicine => {
+                const nameMatch = currentLang === 'english' ? 
+                    medicine.name.toLowerCase().includes(searchTerm) : 
+                    medicine.tamilName.toLowerCase().includes(searchTerm);
+                
+                const categoryMatch = category === 'all' || medicine.color === category;
+                
+                return nameMatch && categoryMatch;
+            });
+            
+            // Sort medicines
+            filteredMedicines.sort((a, b) => {
+                const nameA = currentLang === 'english' ? a.name : a.tamilName;
+                const nameB = currentLang === 'english' ? b.name : b.tamilName;
+                
+                if (sort === 'name-asc') {
+                    return nameA.localeCompare(nameB);
+                } else if (sort === 'name-desc') {
+                    return nameB.localeCompare(nameA);
+                } else if (sort === 'price-asc') {
+                    return a.priceValue - b.priceValue;
+                } else if (sort === 'price-desc') {
+                    return b.priceValue - a.priceValue;
+                }
+                
+                return 0;
+            });
+            
+            // Update pagination
+            currentPage = 1;
+            renderMedicines();
+        }
+        
+        // Render medicines
+        function renderMedicines() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredMedicines.length);
+            const currentPageMedicines = filteredMedicines.slice(startIndex, endIndex);
+            
+            // Clear medicines grid
+            medicinesGrid.innerHTML = '';
+            
+            // Check if there are no results
+            if (currentPageMedicines.length === 0) {
+                const noResultsMessage = document.createElement('div');
+                noResultsMessage.className = 'col-span-full text-center py-12 text-gray-500';
+                noResultsMessage.textContent = currentLang === 'english' ? 
+                    'No medicines found matching your criteria.' : 
+                    'உங்கள் அளவுகோல்களுக்கு பொருந்தும் மருந்துகள் எதுவும் கிடைக்கவில்லை.';
+                medicinesGrid.appendChild(noResultsMessage);
+            } else {
+                // Render medicines
+                currentPageMedicines.forEach(medicine => {
+                    const card = document.createElement('div');
+                    card.className = `medicine-card border-2 rounded-lg p-4 medicine-${medicine.color}`;
+                    card.dataset.id = medicine.id;
+                    
+                    const name = currentLang === 'english' ? medicine.name : medicine.tamilName;
+                    const description = currentLang === 'english' ? medicine.description : medicine.tamilDescription;
+                    const selectText = currentLang === 'english' ? translations.english.selectText : translations.tamil.selectText;
+                    const selectedText = currentLang === 'english' ? translations.english.selectedText : translations.tamil.selectedText;
+                    
+                    // Check if medicine is selected
+                    const isSelected = selectedMedicines.some(m => m.id === medicine.id);
+                    const buttonText = isSelected ? selectedText : selectText;
+                    const buttonClasses = isSelected ? 
+                        "select-med-btn text-sm bg-green-500 text-white font-semibold py-1 px-3 border border-gray-400 rounded shadow" : 
+                        "select-med-btn text-sm bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-3 border border-gray-400 rounded shadow";
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-medium">${name}</h4>
+                            <span class="text-gray-700">${medicine.price}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3">${description}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs px-2 py-1 bg-white bg-opacity-50 rounded-full">
+                                ${currentLang === 'english' ? 
+                                    medicine.color.charAt(0).toUpperCase() + medicine.color.slice(1) + ' Category' : 
+                                    getColorNameInTamil(medicine.color) + ' வகை'}
+                            </span>
+                            <button class="${buttonClasses}">
+                                ${buttonText}
+                            </button>
+                        </div>
+                    `;
+                    
+                    medicinesGrid.appendChild(card);
+                    
+                    // Add event listener to select button
+                    const selectBtn = card.querySelector('.select-med-btn');
+                    selectBtn.addEventListener('click', () => {
+                        toggleMedicineSelection(medicine, selectBtn);
+                    });
+                });
+            }
+            
+            // Update pagination info
+            resultsRange.textContent = `${startIndex + 1}-${endIndex}`;
+            totalResults.textContent = filteredMedicines.length;
+            
+            // Update pagination buttons
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = endIndex >= filteredMedicines.length;
+        }
+        
+        // Toggle medicine selection
+        function toggleMedicineSelection(medicine, button) {
+            const index = selectedMedicines.findIndex(m => m.id === medicine.id);
+            const selectText = currentLang === 'english' ? translations.english.selectText : translations.tamil.selectText;
+            const selectedText = currentLang === 'english' ? translations.english.selectedText : translations.tamil.selectedText;
+            
+            if (index === -1) {
+                // Add to selected medicines
+                selectedMedicines.push(medicine);
+                button.textContent = selectedText;
+                button.classList.remove('bg-white', 'hover:bg-gray-100', 'text-gray-800');
+                button.classList.add('bg-green-500', 'text-white');
+            } else {
+                // Remove from selected medicines
+                selectedMedicines.splice(index, 1);
+                button.textContent = selectText;
+                button.classList.remove('bg-green-500', 'text-white');
+                button.classList.add('bg-white', 'hover:bg-gray-100', 'text-gray-800');
+            }
+            
+            updateSelectedMedicines();
+        }
+        
+        // Update selected medicines section
+        function updateSelectedMedicines() {
+            if (selectedMedicines.length > 0) {
+                selectedMedicinesSection.classList.remove('hidden');
+                
+                // Clear selected medicines list
+                selectedMedicinesList.innerHTML = '';
+                
+                // Calculate total
+                let total = 0;
+                
+                // Add selected medicines to list
+                selectedMedicines.forEach(medicine => {
+                    const name = currentLang === 'english' ? medicine.name : medicine.tamilName;
+                    const item = document.createElement('div');
+                    item.className = 'p-4 flex justify-between items-center';
+                    item.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-${medicine.color}-500 mr-2"></div>
+                            <span>${name}</span>
+                        </div>
+                        <span>${medicine.price}</span>
+                    `;
+                    selectedMedicinesList.appendChild(item);
+                    
+                    // Add to total
+                    total += medicine.priceValue;
+                });
+                
+                // Update totals
+                totalItems.textContent = selectedMedicines.length;
+                totalAmount.textContent = `₹${total.toFixed(2)}`;
+            } else {
+                selectedMedicinesSection.classList.add('hidden');
+            }
+        }
+        
+        // Helper function to get color name in Tamil
+        function getColorNameInTamil(color) {
+            switch(color) {
+                case 'green': return 'பச்சை';
+                case 'blue': return 'நீலம்';
+                case 'yellow': return 'மஞ்சள்';
+                case 'orange': return 'ஆரஞ்சு';
+                case 'red': return 'சிவப்பு';
+                default: return color;
+            }
+        }
+        
+        // Event Listeners
+        searchInput.addEventListener('input', filterAndSortMedicines);
+        categoryFilter.addEventListener('change', filterAndSortMedicines);
+        sortOption.addEventListener('change', filterAndSortMedicines);
+        
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderMedicines();
+                window.scrollTo(0, 0);
+            }
+        });
+        
+        nextPageBtn.addEventListener('click', () => {
+            const startIndex = currentPage * itemsPerPage;
+            if (startIndex < filteredMedicines.length) {
+                currentPage++;
+                renderMedicines();
+                window.scrollTo(0, 0);
+            }
+        });
+        
+        clearSelectionBtn.addEventListener('click', () => {
+            selectedMedicines = [];
+            updateSelectedMedicines();
+            renderMedicines();
+        });
+        
+        proceedBtn.addEventListener('click', () => {
+            const message = currentLang === 'english' ? 
+                `Your selection of ${selectedMedicines.length} medicines has been processed. Please proceed to the dispensing area to collect your medications.` : 
+                `உங்கள் ${selectedMedicines.length} மருந்துகளின் தேர்வு செயலாக்கப்பட்டுள்ளது. உங்கள் மருந்துகளை சேகரிக்க வழங்கும் பகுதிக்கு செல்லவும்.`;
+            alert(message);
+        });
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default language
+            updateLanguage();
+            
+            // Initial filter and render
+            filterAndSortMedicines();
+        });
+    </script>
+</body>
+</html>

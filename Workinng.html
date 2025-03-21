@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Medical Access System (SMAS)</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+    <style>
+        .medicine-green { background-color: #4ade80; border-color: #16a34a; }
+        .medicine-blue { background-color: #60a5fa; border-color: #2563eb; }
+        .medicine-yellow { background-color: #fde047; border-color: #ca8a04; }
+        .medicine-orange { background-color: #fb923c; border-color: #ea580c; }
+        .medicine-red { background-color: #f87171; border-color: #dc2626; }
+        
+        .medicine-card {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+        
+        .medicine-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(66, 153, 225, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0); }
+        }
+        
+        .color-info-tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .color-info-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .color-info-tooltip .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        
+        .color-info-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .language-selector {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .language-card {
+            transition: all 0.3s ease;
+        }
+        
+        .language-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Language Selection Screen -->
+    <div id="languageSelector" class="language-selector">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full mx-4">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">Welcome to SMAS</h1>
+                <p class="text-gray-600">Please select your preferred language</p>
+                <p class="text-gray-600 mt-1">உங்களுக்கு விருப்பமான மொழியைத் தேர்ந்தெடுக்கவும்</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="englishSelect" class="language-card bg-blue-50 rounded-lg p-6 text-center cursor-pointer hover:bg-blue-100 border-2 border-blue-200">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Flag_of_the_United_Kingdom.svg/1200px-Flag_of_the_United_Kingdom.svg.png" alt="English" class="w-16 h-10 mx-auto mb-4 rounded shadow-sm">
+                    <h2 class="text-xl font-semibold text-blue-800">English</h2>
+                    <p class="text-blue-600 mt-2">Continue in English</p>
+                </div>
+                
+                <div id="tamilSelect" class="language-card bg-red-50 rounded-lg p-6 text-center cursor-pointer hover:bg-red-100 border-2 border-red-200">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/TamilNadu_Logo.svg/1200px-TamilNadu_Logo.svg.png" alt="Tamil" class="w-16 h-10 mx-auto mb-4 rounded shadow-sm">
+                    <h2 class="text-xl font-semibold text-red-800">தமிழ்</h2>
+                    <p class="text-red-600 mt-2">தமிழில் தொடரவும்</p>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <p class="text-sm text-gray-500">You can change the language later from settings</p>
+                <p class="text-sm text-gray-500">நீங்கள் பின்னர் அமைப்புகளில் இருந்து மொழியை மாற்றலாம்</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Registration Screen -->
+    <div id="patientRegistration" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-90 flex justify-center items-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full mx-4">
+            <div class="text-center mb-6">
+                <h2 id="registrationTitle" class="text-2xl font-bold text-gray-800">Patient Registration</h2>
+                <p id="registrationSubtitle" class="text-gray-600 mt-1">Please provide your basic information</p>
+            </div>
+            
+            <div class="mb-6">
+                <div class="flex justify-center mb-4">
+                    <button id="regVoiceBtn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-16 h-16 flex items-center justify-center mx-auto pulse">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                </div>
+                <p id="regVoiceStatus" class="text-center text-gray-600 mb-4">Click the microphone and say your name, age, and any medical conditions</p>
+            </div>
+            
+            <form id="registrationForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label id="nameLabel" for="patientName" class="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                        <input id="patientName" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                    <div>
+                        <label id="ageLabel" for="patientAge" class="block text-gray-700 text-sm font-bold mb-2">Age</label>
+                        <input id="patientAge" type="number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label id="genderLabel" class="block text-gray-700 text-sm font-bold mb-2">Gender</label>
+                    <div class="flex space-x-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="gender" value="male" class="form-radio h-5 w-5 text-blue-600" checked>
+                            <span id="maleLabel" class="ml-2 text-gray-700">Male</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="gender" value="female" class="form-radio h-5 w-5 text-pink-600">
+                            <span id="femaleLabel" class="ml-2 text-gray-700">Female</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="gender" value="other" class="form-radio h-5 w-5 text-purple-600">
+                            <span id="otherLabel" class="ml-2 text-gray-700">Other</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label id="medicalHistoryLabel" for="medicalHistory" class="block text-gray-700 text-sm font-bold mb-2">Any existing medical conditions?</label>
+                    <textarea id="medicalHistory" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" rows="2"></textarea>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="registrationSubmitBtn" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                        <span id="continueLabel">Continue</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Color Code Information Modal -->
+    <div id="colorInfoModal" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-80 flex justify-center items-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="colorInfoTitle" class="text-xl font-bold text-gray-800">Medicine Color Coding System</h2>
+                <button id="closeColorInfo" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="border-2 border-green-500 rounded-lg p-4 bg-green-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-green-500 mr-2"></div>
+                        <h3 id="greenTitle" class="font-semibold text-green-800">Green - General OTC Medicines</h3>
+                    </div>
+                    <p id="greenDesc" class="text-sm text-gray-700">Common over-the-counter medications like paracetamol, antihistamines, and vitamins that don't require a prescription.</p>
+                </div>
+                
+                <div class="border-2 border-blue-500 rounded-lg p-4 bg-blue-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-500 mr-2"></div>
+                        <h3 id="blueTitle" class="font-semibold text-blue-800">Blue - Prescription Medications</h3>
+                    </div>
+                    <p id="blueDesc" class="text-sm text-gray-700">Medications for non-severe conditions that typically require a doctor's prescription, such as antibiotics.</p>
+                </div>
+                
+                <div class="border-2 border-yellow-500 rounded-lg p-4 bg-yellow-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-yellow-500 mr-2"></div>
+                        <h3 id="yellowTitle" class="font-semibold text-yellow-800">Yellow - Chronic Condition Medications</h3>
+                    </div>
+                    <p id="yellowDesc" class="text-sm text-gray-700">Medications for ongoing chronic conditions like diabetes, hypertension, or asthma that require regular use.</p>
+                </div>
+                
+                <div class="border-2 border-orange-500 rounded-lg p-4 bg-orange-50">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-orange-500 mr-2"></div>
+                        <h3 id="orangeTitle" class="font-semibold text-orange-800">Orange - High-Alert Medications</h3>
+                    </div>
+                    <p id="orangeDesc" class="text-sm text-gray-700">Medications that require special attention and doctor's approval, such as antidepressants or steroids.</p>
+                </div>
+                
+                <div class="border-2 border-red-500 rounded-lg p-4 bg-red-50 md:col-span-2">
+                    <div class="flex items-center mb-2">
+                        <div class="w-6 h-6 rounded-full bg-red-500 mr-2"></div>
+                        <h3 id="redTitle" class="font-semibold text-red-800">Red - Emergency Medications</h3>
+                    </div>
+                    <p id="redDesc" class="text-sm text-gray-700">Critical medications for emergency situations, such as EpiPens for severe allergic reactions or emergency painkillers.</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <button id="colorInfoUnderstoodBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                    <span id="understoodLabel">I Understand</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mr-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7 2a1 1 0 00-.707 1.707L7 4.414v3.758a1 1 0 01-.293.707l-4 4C.817 14.769 2.156 18 4.828 18h10.343c2.673 0 4.012-3.231 2.122-5.121l-4-4A1 1 0 0113 8.172V4.414l.707-.707A1 1 0 0013 2H7zm2 6.172V4h2v4.172a3 3 0 00.879 2.12l1.027 1.028a4 4 0 00-2.171.102l-.47.156a4 4 0 01-2.53 0l-.563-.187a1.993 1.993 0 00-.114-.035l1.063-1.063A3 3 0 009 8.172z" clip-rule="evenodd" />
+                    </svg>
+                    <h1 id="headerTitle" class="text-2xl font-bold">Smart Medical Access System</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="colorInfoBtn" class="bg-white text-blue-600 hover:bg-blue-50 font-bold py-2 px-4 rounded-lg flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="colorInfoBtnText">Color Codes</span>
+                    </button>
+                    <button id="emergencyBtn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                        </svg>
+                        <span id="emergencyBtnText">Emergency</span>
+                    </button>
+                    <div class="relative">
+                        <button id="languageToggle" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.20l-.8 2H12a1 1 0 110 2H8.2l-.31.78-.04.08-.79 1.97H12a1 1 0 110 2H6.2l-.31.78-.04.08-.79 1.97H12a1 1 0 110 2H4a1 1 0 01-.93-1.36l3.62-9.05A1 1 0 017.62 9H7a1 1 0 01-1-1V3a1 1 0 011-1zm6 0a1 1 0 011 1v7.59l.3-.3a1 1 0 111.4 1.42l-2 2a1 1 0 01-1.4 0l-2-2a1 1 0 111.4-1.42l.3.3V3a1 1 0 011-1z" clip-rule="evenodd" />
+                            </svg>
+                            <span id="currentLanguage">English</span>
+                        </button>
+                        <div id="languageDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden z-10">
+                            <div class="py-1">
+                                <a href="#" id="switchToEnglish" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">English</a>
+                                <a href="#" id="switchToTamil" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">தமிழ் (Tamil)</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Left Column - Input Methods -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <h2 id="helpTitle" class="text-xl font-semibold mb-4 text-gray-800">How can we help you today?</h2>
+                        
+                        <!-- Input Tabs -->
+                        <div class="mb-6">
+                            <div class="flex border-b border-gray-200">
+                                <button id="symptomTabBtn" class="py-2 px-4 text-blue-600 border-b-2 border-blue-600 font-medium">
+                                    <span id="symptomTabText">Symptoms</span>
+                                </button>
+                                <button id="prescriptionTabBtn" class="py-2 px-4 text-gray-500 font-medium">
+                                    <span id="prescriptionTabText">Prescription</span>
+                                </button>
+                                <button id="voiceTabBtn" class="py-2 px-4 text-gray-500 font-medium">
+                                    <span id="voiceTabText">Voice</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Symptom Input Tab -->
+                            <div id="symptomTab" class="py-4">
+                                <textarea id="symptomInput" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:shadow-outline" rows="4" placeholder="Describe your symptoms here..."></textarea>
+                                <button id="analyzeSymptomBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg w-full">
+                                    <span id="analyzeSymptomText">Analyze Symptoms</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Prescription Upload Tab -->
+                            <div id="prescriptionTab" class="py-4 hidden">
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p id="dragDropText" class="mt-1 text-sm text-gray-600">Drag and drop your prescription or</p>
+                                    <input id="prescriptionUpload" type="file" accept="image/*" class="hidden">
+                                    <button id="browseBtn" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none">
+                                        <span id="browseBtnText">Browse Files</span>
+                                    </button>
+                                </div>
+                                <div id="prescriptionPreview" class="mt-4 hidden">
+                                    <img id="prescriptionImage" class="max-w-full h-auto rounded-lg shadow-md" src="/placeholder.svg" alt="Prescription Preview">
+                                    <button id="scanPrescriptionBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg w-full">
+                                        <span id="scanPrescriptionText">Scan Prescription</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Voice Input Tab -->
+                            <div id="voiceTab" class="py-4 hidden">
+                                <div class="text-center">
+                                    <button id="startVoiceBtn" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-20 h-20 flex items-center justify-center mx-auto pulse">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                        </svg>
+                                    </button>
+                                    <p id="voiceStatus" class="mt-4 text-gray-600">Click to start speaking</p>
+                                    <div id="voiceResult" class="mt-4 p-4 bg-gray-100 rounded-lg text-left hidden">
+                                        <p id="voiceText" class="text-gray-800"></p>
+                                    </div>
+                                    <button id="analyzeVoiceBtn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg w-full hidden">
+                                        <span id="analyzeVoiceText">Analyze Voice Input</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Patient Information Summary -->
+                        <div id="patientInfoSummary" class="mb-4 p-4 bg-blue-50 rounded-lg">
+                            <h3 id="patientInfoTitle" class="text-lg font-medium text-blue-800 mb-2">Patient Information</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <p id="patientNameLabel" class="text-sm text-gray-600">Name:</p>
+                                    <p id="patientNameValue" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p id="patientAgeLabel" class="text-sm text-gray-600">Age:</p>
+                                    <p id="patientAgeValue" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p id="patientGenderLabel" class="text-sm text-gray-600">Gender:</p>
+                                    <p id="patientGenderValue" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p id="patientMedicalLabel" class="text-sm text-gray-600">Medical History:</p>
+                                    <p id="patientMedicalValue" class="font-medium text-gray-800">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Middle Column - AI Diagnosis -->
+                <div class="lg:col-span-2">
+                    <!-- AI Analysis Results -->
+                    <div id="aiAnalysisSection" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 id="analysisTitle" class="text-xl font-semibold text-gray-800">AI Analysis Results</h2>
+                            <span id="analysisTimestamp" class="text-sm text-gray-500"></span>
+                        </div>
+                        
+                        <div id="analysisLoading" class="flex flex-col items-center justify-center py-8">
+                            <div class="loading-spinner mb-4"></div>
+                            <p id="analyzingText" class="text-gray-600">Analyzing your symptoms...</p>
+                        </div>
+                        
+                        <div id="analysisResults" class="hidden">
+                            <div class="mb-6 p-4 bg-blue-50 rounded-lg">
+                                <h3 id="diagnosisSummaryTitle" class="text-lg font-medium text-blue-800 mb-2">Diagnosis Summary</h3>
+                                <p id="diagnosisSummary" class="text-gray-700"></p>
+                            </div>
+                            
+                            <h3 id="recommendedMedsTitle" class="text-lg font-medium text-gray-800 mb-3">Recommended Medications</h3>
+                            <div id="medicationsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Medicine cards will be dynamically inserted here -->
+                            </div>
+                            
+                            <div class="mt-6 flex justify-between">
+                                <button id="consultDoctorBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span id="consultDoctorText">Consult Doctor</span>
+                                </button>
+                                <button id="proceedToPaymentBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                                    <span id="proceedPaymentText">Proceed to Payment</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Doctor Consultation Section -->
+                    <div id="doctorConsultationSection" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 id="consultationTitle" class="text-xl font-semibold text-gray-800">Virtual Doctor Consultation</h2>
+                            <button id="endConsultationBtn" class="text-red-600 hover:text-red-800">
+                                <span id="endConsultText">End Consultation</span>
+                            </button>
+                        </div>
+                        
+                        <div id="consultationConnecting" class="flex flex-col items-center justify-center py-8">
+                            <div class="loading-spinner mb-4"></div>
+                            <p id="connectingText" class="text-gray-600">Connecting to doctor...</p>
+                        </div>
+                        
+                        <div id="consultationActive" class="hidden">
+                            <div class="mb-4 p-4 bg-blue-50 rounded-lg">
+                                <p id="meetJoinText" class="text-gray-700">You will be redirected to Google Meet for your consultation. Please click the button below to join the meeting.</p>
+                            </div>
+                            
+                            <div class="text-center mb-6">
+                                <a id="joinMeetBtn" href="https://meet.google.com" target="_blank" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg">
+                                    <span id="joinMeetText">Join Google Meet</span>
+                                </a>
+                            </div>
+                            
+                            <div class="border rounded-lg p-4">
+                                <h3 id="doctorNotesTitle" class="text-lg font-medium text-gray-800 mb-2">Doctor's Notes</h3>
+                                <p id="doctorNotes" class="text-gray-700">Based on your symptoms, I recommend the following treatment plan...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Section -->
+                    <div id="paymentSection" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+                        <h2 id="paymentTitle" class="text-xl font-semibold text-gray-800 mb-4">Payment</h2>
+                        
+                        <div class="mb-6">
+                            <h3 id="selectedMedsTitle" class="text-lg font-medium text-gray-800 mb-3">Selected Medications</h3>
+                            <div id="selectedMedicationsList" class="border rounded-lg divide-y">
+                                <!-- Selected medications will be listed here -->
+                            </div>
+                            
+                            <div class="mt-4 flex justify-between font-medium">
+                                <span id="totalAmountLabel">Total Amount:</span>
+                                <span id="totalAmount">₹0.00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <h3 id="paymentMethodTitle" class="text-lg font-medium text-gray-800 mb-3">Payment Method</h3>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="border rounded-lg p-4 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    <span id="creditCardText" class="text-sm">Credit Card</span>
+                                </div>
+                                <div class="border rounded-lg p-4 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span id="upiText" class="text-sm">UPI</span>
+                                </div>
+                                <div class="border rounded-lg p-4 text-center cursor-pointer hover:bg-blue-50 hover:border-blue-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <span id="cashText" class="text-sm">Cash</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <h3 id="govtSchemeTitle" class="text-lg font-medium text-gray-800 mb-3">Government Schemes</h3>
+                            <div class="border rounded-lg p-4">
+                                <div class="flex items-center mb-2">
+                                    <input id="schemeCheckbox" type="checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                    <label id="schemeLabel" for="schemeCheckbox" class="ml-2 block text-sm text-gray-900">
+                                        Apply for government subsidy
+                                    </label>
+                                </div>
+                                <div id="schemeDetails" class="mt-2 hidden">
+                                    <select id="schemeSelect" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
+                                        <option value="" id="selectSchemeText">Select a scheme</option>
+                                        <option value="ayushman" id="ayushmanText">Ayushman Bharat</option>
+                                        <option value="pmjay" id="pmjayText">PM Jan Arogya Yojana</option>
+                                        <option value="cmchis" id="cmchisText">Chief Minister's Comprehensive Health Insurance</option>
+                                    </select>
+                                    <input id="schemeId" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Enter scheme ID">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <button id="backToAnalysisBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                </svg>
+                                <span id="backText">Back</span>
+                            </button>
+                            <button id="confirmPaymentBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                                <span id="confirmPaymentText">Confirm Payment</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Dispensing Section -->
+                    <div id="dispensingSection" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
+                        <h2 id="dispensingTitle" class="text-xl font-semibold text-gray-800 mb-4">Medicine Dispensing</h2>
+                        
+                        <div id="dispensingProcess" class="flex flex-col items-center justify-center py-8">
+                            <div class="loading-spinner mb-4"></div>
+                            <p id="preparingMedsText" class="text-gray-600">Preparing your medications...</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+                                <div id="dispensingProgress" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="dispensingComplete" class="hidden">
+                            <div class="text-center mb-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <h3 id="dispensingCompleteTitle" class="text-lg font-medium text-gray-800 mt-2">Dispensing Complete!</h3>
+                                <p id="medsReadyText" class="text-gray-600 mt-1">Your medications are ready for collection</p>
+                            </div>
+                            
+                            <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                                <h3 id="instructionsTitle" class="text-md font-medium text-blue-800 mb-2">Important Instructions</h3>
+                                <ul class="list-disc list-inside text-gray-700 space-y-1">
+                                    <li id="instruction1">Please collect your medicine from the dispensing tray below</li>
+                                    <li id="instruction2">Follow the dosage instructions on each medicine pack</li>
+                                    <li id="instruction3">Store medicines in a cool, dry place away from direct sunlight</li>
+                                    <li id="instruction4">Keep all medicines out of reach of children</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="flex justify-center">
+                                <button id="finishBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg flex items-center">
+                                    <span id="finishText">Finish</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Welcome Screen (Default) -->
+                    <div id="welcomeScreen" class="bg-white rounded-lg shadow-md p-6">
+                        <div class="text-center py-8">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto text-blue-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <h2 id="welcomeTitle" class="text-2xl font-bold text-gray-800 mb-2">Welcome to Smart Medical Access System</h2>
+                            <p id="welcomeSubtitle" class="text-gray-600 mb-6">Your AI-powered healthcare assistant</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                                <div class="bg-blue-50 rounded-lg p-4 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-blue-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <h3 id="describeTitle" class="font-medium text-blue-800">Describe Symptoms</h3>
+                                    <p id="describeText" class="text-sm text-gray-600 mt-1">Enter your symptoms for AI diagnosis</p>
+                                </div>
+                                <div class="bg-green-50 rounded-lg p-4 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-green-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    <h3 id="scanTitle" class="font-medium text-green-800">Scan Prescription</h3>
+                                    <p id="scanText" class="text-sm text-gray-600 mt-1">Upload your prescription for processing</p>
+                                </div>
+                                <div class="bg-purple-50 rounded-lg p-4 text-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-purple-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    <h3 id="virtualTitle" class="font-medium text-purple-800">Virtual Consultation</h3>
+                                    <p id="virtualText" class="text-sm text-gray-600 mt-1">Connect with a doctor via video call</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="mb-4 md:mb-0">
+                        <h3 id="footerTitle" class="text-lg font-semibold">Smart Medical Access System</h3>
+                        <p id="footerSubtitle" class="text-gray-400 text-sm">AI-Powered Healthcare for Rural Areas</p>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <span class="sr-only">Emergency</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m2.829 2.829L18 18M13 10l-2-1-2 1v4l2 1 2-1v-4z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <span class="sr-only">Help</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <span class="sr-only">Settings</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                <div class="mt-4 text-center text-gray-400 text-sm">
+                    <span id="copyrightText">&copy; 2025 SMAS. All rights reserved.</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // AIXplain API Key
+        const AIXPLAIN_API_KEY = "09be********6c2f";
+        
+        // Language Translations
+        const translations = {
+            english: {
+                // Header
+                headerTitle: "Smart Medical Access System",
+                colorInfoBtnText: "Color Codes",
+                emergencyBtnText: "Emergency",
+                currentLanguage: "English",
+                
+                // Registration
+                registrationTitle: "Patient Registration",
+                registrationSubtitle: "Please provide your basic information",
+                nameLabel: "Name",
+                ageLabel: "Age",
+                genderLabel: "Gender",
+                maleLabel: "Male",
+                femaleLabel: "Female",
+                otherLabel: "Other",
+                medicalHistoryLabel: "Any existing medical conditions?",
+                continueLabel: "Continue",
+                
+                // Color Info
+                colorInfoTitle: "Medicine Color Coding System",
+                greenTitle: "Green - General OTC Medicines",
+                greenDesc: "Common over-the-counter medications like paracetamol, antihistamines, and vitamins that don't require a prescription.",
+                blueTitle: "Blue - Prescription Medications",
+                blueDesc: "Medications for non-severe conditions that typically require a doctor's prescription, such as antibiotics.",
+                yellowTitle: "Yellow - Chronic Condition Medications",
+                yellowDesc: "Medications for ongoing chronic conditions like diabetes, hypertension, or asthma that require regular use.",
+                orangeTitle: "Orange - High-Alert Medications",
+                orangeDesc: "Medications that require special attention and doctor's approval, such as antidepressants or steroids.",
+                redTitle: "Red - Emergency Medications",
+                redDesc: "Critical medications for emergency situations, such as EpiPens for severe allergic reactions or emergency painkillers.",
+                understoodLabel: "I Understand",
+                
+                // Main Interface
+                helpTitle: "How can we help you today?",
+                symptomTabText: "Symptoms",
+                prescriptionTabText: "Prescription",
+                voiceTabText: "Voice",
+                analyzeSymptomText: "Analyze Symptoms",
+                dragDropText: "Drag and drop your prescription or",
+                browseBtnText: "Browse Files",
+                scanPrescriptionText: "Scan Prescription",
+                voiceStatus: "Click to start speaking",
+                analyzeVoiceText: "Analyze Voice Input",
+                
+                // Patient Info
+                patientInfoTitle: "Patient Information",
+                patientNameLabel: "Name:",
+                patientAgeLabel: "Age:",
+                patientGenderLabel: "Gender:",
+                patientMedicalLabel: "Medical History:",
+                
+                // Analysis
+                analysisTitle: "AI Analysis Results",
+                analyzingText: "Analyzing your symptoms...",
+                diagnosisSummaryTitle: "Diagnosis Summary",
+                recommendedMedsTitle: "Recommended Medications",
+                consultDoctorText: "Consult Doctor",
+                proceedPaymentText: "Proceed to Payment",
+                
+                // Consultation
+                consultationTitle: "Virtual Doctor Consultation",
+                endConsultText: "End Consultation",
+                connectingText: "Connecting to doctor...",
+                meetJoinText: "You will be redirected to Google Meet for your consultation. Please click the button below to join the meeting.",
+                joinMeetText: "Join Google Meet",
+                doctorNotesTitle: "Doctor's Notes",
+                
+                // Payment
+                paymentTitle: "Payment",
+                selectedMedsTitle: "Selected Medications",
+                totalAmountLabel: "Total Amount:",
+                paymentMethodTitle: "Payment Method",
+                creditCardText: "Credit Card",
+                upiText: "UPI",
+                cashText: "Cash",
+                govtSchemeTitle: "Government Schemes",
+                schemeLabel: "Apply for government subsidy",
+                selectSchemeText: "Select a scheme",
+                ayushmanText: "Ayushman Bharat",
+                pmjayText: "PM Jan Arogya Yojana",
+                cmchisText: "Chief Minister's Comprehensive Health Insurance",
+                backText: "Back",
+                confirmPaymentText: "Confirm Payment",
+                
+                // Dispensing
+                dispensingTitle: "Medicine Dispensing",
+                preparingMedsText: "Preparing your medications...",
+                dispensingCompleteTitle: "Dispensing Complete!",
+                medsReadyText: "Your medications are ready for collection",
+                instructionsTitle: "Important Instructions",
+                instruction1: "Please collect your medicine from the dispensing tray below",
+                instruction2: "Follow the dosage instructions on each medicine pack",
+                instruction3: "Store medicines in a cool, dry place away from direct sunlight",
+                instruction4: "Keep all medicines out of reach of children",
+                finishText: "Finish",
+                
+                // Welcome
+                welcomeTitle: "Welcome to Smart Medical Access System",
+                welcomeSubtitle: "Your AI-powered healthcare assistant",
+                describeTitle: "Describe Symptoms",
+                describeText: "Enter your symptoms for AI diagnosis",
+                scanTitle: "Scan Prescription",
+                scanText: "Upload your prescription for processing",
+                virtualTitle: "Virtual Consultation",
+                virtualText: "Connect with a doctor via video call",
+                
+                // Footer
+                footerTitle: "Smart Medical Access System",
+                footerSubtitle: "AI-Powered Healthcare for Rural Areas",
+                copyrightText: "© 2025 SMAS. All rights reserved."
+            },
+            tamil: {
+                // Header
+                headerTitle: "ஸ்மார்ட் மருத்துவ அணுகல் அமைப்பு",
+                colorInfoBtnText: "நிற குறியீடுகள்",
+                emergencyBtnText: "அவசரம்",
+                currentLanguage: "தமிழ்",
+                
+                // Registration
+                registrationTitle: "நோயாளி பதிவு",
+                registrationSubtitle: "உங்கள் அடிப்படை தகவலை வழங்கவும்",
+                nameLabel: "பெயர்",
+                ageLabel: "வயது",
+                genderLabel: "பாலினம்",
+                maleLabel: "ஆண்",
+                femaleLabel: "பெண்",
+                otherLabel: "மற்றவை",
+                medicalHistoryLabel: "ஏதேனும் இருக்கும் மருத்துவ நிலைமைகள்?",
+                continueLabel: "தொடரவும்",
+                
+                // Color Info
+                colorInfoTitle: "மருந்து நிற குறியீட்டு அமைப்பு",
+                greenTitle: "பச்சை - பொது OTC மருந்துகள்",
+                greenDesc: "பாராசிட்டமால், ஆன்டிஹிஸ்டமைன்கள் மற்றும் வைட்டமின்கள் போன்ற பொதுவான கவுண்டர் மருந்துகள் மருத்துவர் பரிந்துரை தேவையில்லை.",
+                blueTitle: "நீலம் - மருத்துவர் பரிந்துரை மருந்துகள்",
+                blueDesc: "ஆன்டிபயாடிக்குகள் போன்ற கடுமையற்ற நிலைமைகளுக்கான மருந்துகள் பொதுவாக மருத்துவரின் பரிந்துரை தேவைப்படுகிறது.",
+                yellowTitle: "மஞ்சள் - நாள்பட்ட நிலை மருந்துகள்",
+                yellowDesc: "நீரிழிவு, உயர் இரத்த அழுத்தம் அல்லது ஆஸ்துமா போன்ற தொடர்ச்சியான நாள்பட்ட நிலைமைகளுக்கான மருந்துகள் வழக்கமான பயன்பாடு தேவைப்படுகிறது.",
+                orangeTitle: "ஆரஞ்சு - உயர்-எச்சரிக்கை மருந்துகள்",
+                orangeDesc: "மன அழுத்த எதிர்ப்பு மருந்துகள் அல்லது ஸ்டெராய்டுகள் போன்ற சிறப்பு கவனம் மற்றும் மருத்துவரின் ஒப்புதல் தேவைப்படும் மருந்துகள்.",
+                redTitle: "சிவப்பு - அவசர மருந்துகள்",
+                redDesc: "கடுமையான ஒவ்வாமை எதிர்வினைகளுக்கான எபிபென்கள் அல்லது அவசர வலி நிவாரணிகள் போன்ற அவசர நிலைமைகளுக்கான முக்கியமான மருந்துகள்.",
+                understoodLabel: "நான் புரிந்துகொண்டேன்",
+                
+                // Main Interface
+                helpTitle: "இன்று நாங்கள் எப்படி உதவ முடியும்?",
+                symptomTabText: "அறிகுறிகள்",
+                prescriptionTabText: "மருத்துவர் பரிந்துரை",
+                voiceTabText: "குரல்",
+                analyzeSymptomText: "அறிகுறிகளை பகுப்பாய்வு செய்யவும்",
+                dragDropText: "உங்கள் மருத்துவர் பரிந்துரையை இழுத்து விடவும் அல்லது",
+                browseBtnText: "கோப்புகளை உலாவவும்",
+                scanPrescriptionText: "மருத்துவர் பரிந்துரையை ஸ்கேன் செய்யவும்",
+                voiceStatus: "பேச தொடங்க கிளிக் செய்யவும்",
+                analyzeVoiceText: "குரல் உள்ளீட்டை பகுப்பாய்வு செய்யவும்",
+                
+                // Patient Info
+                patientInfoTitle: "நோயாளி தகவல்",
+                patientNameLabel: "பெயர்:",
+                patientAgeLabel: "வயது:",
+                patientGenderLabel: "பாலினம்:",
+                patientMedicalLabel: "மருத்துவ வரலாறு:",
+                
+                // Analysis
+                analysisTitle: "AI பகுப்பாய்வு முடிவுகள்",
+                analyzingText: "உங்கள் அறிகுறிகளை பகுப்பாய்வு செய்கிறது...",
+                diagnosisSummaryTitle: "நோயறிதல் சுருக்கம்",
+                recommendedMedsTitle: "பரிந்துரைக்கப்பட்ட மருந்துகள்",
+                consultDoctorText: "மருத்துவரை ஆலோசிக்கவும்",
+                proceedPaymentText: "கட்டணத்திற்கு தொடரவும்",
+                
+                // Consultation
+                consultationTitle: "மெய்நிகர் மருத்துவர் ஆலோசனை",
+                endConsultText: "ஆலோசனையை முடிக்கவும்",
+                connectingText: "மருத்துவருடன் இணைக்கிறது...",
+                meetJoinText: "உங்கள் ஆலோசனைக்காக Google Meet க்கு திருப்பி விடப்படுவீர்கள். கூட்டத்தில் சேர கீழே உள்ள பொத்தானைக் கிளிக் செய்யவும்.",
+                joinMeetText: "Google Meet இல் சேரவும்",
+                doctorNotesTitle: "மருத்துவரின் குறிப்புகள்",
+                
+                // Payment
+                paymentTitle: "கட்டணம்",
+                selectedMedsTitle: "தேர்ந்தெடுக்கப்பட்ட மருந்துகள்",
+                totalAmountLabel: "மொத்த தொகை:",
+                paymentMethodTitle: "கட்டண முறை",
+                creditCardText: "கிரெடிட் கார்டு",
+                upiText: "UPI",
+                cashText: "பணம்",
+                govtSchemeTitle: "அரசு திட்டங்கள்",
+                schemeLabel: "அரசு மானியத்திற்கு விண்ணப்பிக்கவும்",
+                selectSchemeText: "ஒரு திட்டத்தைத் தேர்ந்தெடுக்கவும்",
+                ayushmanText: "ஆயுஷ்மான் பாரத்",
+                pmjayText: "பிரதமர் ஜன் ஆரோக்கிய யோஜனா",
+                cmchisText: "முதலமைச்சரின் விரிவான சுகாதார காப்பீட்டுத் திட்டம்",
+                backText: "பின்",
+                confirmPaymentText: "கட்டணத்தை உறுதிப்படுத்தவும்",
+                
+                // Dispensing
+                dispensingTitle: "மருந்து வழங்குதல்",
+                preparingMedsText: "உங்கள் மருந்துகளை தயாரிக்கிறது...",
+                dispensingCompleteTitle: "வழங்குதல் முடிந்தது!",
+                medsReadyText: "உங்கள் மருந்துகள் சேகரிப்புக்கு தயாராக உள்ளன",
+                instructionsTitle: "முக்கிய வழிமுறைகள்",
+                instruction1: "கீழே உள்ள வழங்கும் தட்டிலிருந்து உங்கள் மருந்தை சேகரிக்கவும்",
+                instruction2: "ஒவ்வொரு மருந்து பொதியிலும் உள்ள அளவு வழிமுறைகளைப் பின்பற்றவும்",
+                instruction3: "மருந்துகளை நேரடி சூரிய ஒளியிலிருந்து விலகி குளிர்ந்த, உலர்ந்த இடத்தில் சேமிக்கவும்",
+                instruction4: "எல்லா மருந்துகளையும் குழந்தைகளின் கைக்கு எட்டாத இடத்தில் வைக்கவும்",
+                finishText: "முடிக்க",
+                
+                // Welcome
+                welcomeTitle: "ஸ்மார்ட் மருத்துவ அணுகல் அமைப்புக்கு வரவேற்கிறோம்",
+                welcomeSubtitle: "உங்கள் AI-ஆல் இயக்கப்படும் சுகாதார உதவியாளர்",
+                describeTitle: "அறிகுறிகளை விவரிக்கவும்",
+                describeText: "AI நோயறிதலுக்கு உங்கள் அறிகுறிகளை உள்ளிடவும்",
+                scanTitle: "மருத்துவர் பரிந்துரையை ஸ்கேன் செய்யவும்",
+                scanText: "செயலாக்கத்திற்கு உங்கள் மருத்துவர் பரிந்துரையை பதிவேற்றவும்",
+                virtualTitle: "மெய்நிகர் ஆலோசனை",
+                virtualText: "வீடியோ அழைப்பு மூலம் மருத்துவருடன் இணையவும்",
+                
+                // Footer
+                footerTitle: "ஸ்மார்ட் மருத்துவ அணுகல் அமைப்பு",
+                footerSubtitle: "கிராமப்புற பகுதிகளுக்கான AI-ஆல் இயக்கப்படும் சுகாதாரம்",
+                copyrightText: "© 2025 SMAS. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை."
+            }
+        };
+        
+        // DOM Elements
+        const languageSelector = document.getElementById('languageSelector');
+        const englishSelect = document.getElementById('englishSelect');
+        const tamilSelect = document.getElementById('tamilSelect');
+        const patientRegistration = document.getElementById('patientRegistration');
+        const registrationForm = document.getElementById('registrationForm');
+        const colorInfoModal = document.getElementById('colorInfoModal');
+        const closeColorInfo = document.getElementById('closeColorInfo');
+        const colorInfoUnderstoodBtn = document.getElementById('colorInfoUnderstoodBtn');
+        const colorInfoBtn = document.getElementById('colorInfoBtn');
+        const languageToggle = document.getElementById('languageToggle');
+        const languageDropdown = document.getElementById('languageDropdown');
+        const switchToEnglish = document.getElementById('switchToEnglish');
+        const switchToTamil = document.getElementById('switchToTamil');
+        const currentLanguage = document.getElementById('currentLanguage');
+        
+        // Input Elements
+        const symptomTabBtn = document.getElementById('symptomTabBtn');
+        const prescriptionTabBtn = document.getElementById('prescriptionTabBtn');
+        const voiceTabBtn = document.getElementById('voiceTabBtn');
+        const symptomTab = document.getElementById('symptomTab');
+        const prescriptionTab = document.getElementById('prescriptionTab');
+        const voiceTab = document.getElementById('voiceTab');
+        const analyzeSymptomBtn = document.getElementById('analyzeSymptomBtn');
+        const symptomInput = document.getElementById('symptomInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const prescriptionUpload = document.getElementById('prescriptionUpload');
+        const prescriptionPreview = document.getElementById('prescriptionPreview');
+        const prescriptionImage = document.getElementById('prescriptionImage');
+        const scanPrescriptionBtn = document.getElementById('scanPrescriptionBtn');
+        const startVoiceBtn = document.getElementById('startVoiceBtn');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const voiceResult = document.getElementById('voiceResult');
+        const voiceText = document.getElementById('voiceText');
+        const analyzeVoiceBtn = document.getElementById('analyzeVoiceBtn');
+        
+        // Patient Info Elements
+        const patientNameValue = document.getElementById('patientNameValue');
+        const patientAgeValue = document.getElementById('patientAgeValue');
+        const patientGenderValue = document.getElementById('patientGenderValue');
+        const patientMedicalValue = document.getElementById('patientMedicalValue');
+        
+        // Analysis Elements
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const aiAnalysisSection = document.getElementById('aiAnalysisSection');
+        const analysisLoading = document.getElementById('analysisLoading');
+        const analysisResults = document.getElementById('analysisResults');
+        const diagnosisSummary = document.getElementById('diagnosisSummary');
+        const medicationsList = document.getElementById('medicationsList');
+        const consultDoctorBtn = document.getElementById('consultDoctorBtn');
+        const proceedToPaymentBtn = document.getElementById('proceedToPaymentBtn');
+        
+        // Consultation Elements
+        const doctorConsultationSection = document.getElementById('doctorConsultationSection');
+        const consultationConnecting = document.getElementById('consultationConnecting');
+        const consultationActive = document.getElementById('consultationActive');
+        const endConsultationBtn = document.getElementById('endConsultationBtn');
+        
+        // Payment Elements
+        const paymentSection = document.getElementById('paymentSection');
+        const selectedMedicationsList = document.getElementById('selectedMedicationsList');
+        const totalAmount = document.getElementById('totalAmount');
+        const backToAnalysisBtn = document.getElementById('backToAnalysisBtn');
+        const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+        const schemeCheckbox = document.getElementById('schemeCheckbox');
+        const schemeDetails = document.getElementById('schemeDetails');
+        
+        // Dispensing Elements
+        const dispensingSection = document.getElementById('dispensingSection');
+        const dispensingProcess = document.getElementById('dispensingProcess');
+        const dispensingProgress = document.getElementById('dispensingProgress');
+        const dispensingComplete = document.getElementById('dispensingComplete');
+        const finishBtn = document.getElementById('finishBtn');
+        
+        // Other Elements
+        const emergencyBtn = document.getElementById('emergencyBtn');
+        const analysisTimestamp = document.getElementById('analysisTimestamp');
+        const doctorNotes = document.getElementById('doctorNotes');
+        const regVoiceBtn = document.getElementById('regVoiceBtn');
+        const regVoiceStatus = document.getElementById('regVoiceStatus');
+        
+        // Global Variables
+        let currentLang = 'english';
+        let recognition;
+        let registrationRecognition;
+        
+        // Language Selection
+        englishSelect.addEventListener('click', () => {
+            currentLang = 'english';
+            languageSelector.classList.add('hidden');
+            patientRegistration.classList.remove('hidden');
+            updateLanguage();
+        });
+        
+        tamilSelect.addEventListener('click', () => {
+            currentLang = 'tamil';
+            languageSelector.classList.add('hidden');
+            patientRegistration.classList.remove('hidden');
+            updateLanguage();
+        });
+        
+        // Language Toggle
+        languageToggle.addEventListener('click', () => {
+            languageDropdown.classList.toggle('hidden');
+        });
+        
+        switchToEnglish.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentLang = 'english';
+            languageDropdown.classList.add('hidden');
+            updateLanguage();
+        });
+        
+        switchToTamil.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentLang = 'tamil';
+            languageDropdown.classList.add('hidden');
+            updateLanguage();
+        });
+        
+        // Update UI language
+        function updateLanguage() {
+            const lang = translations[currentLang];
+            
+            // Update all text elements with translations
+            document.querySelectorAll('[id]').forEach(element => {
+                const id = element.id;
+                if (lang[id]) {
+                    if (element.tagName === 'INPUT' && element.type === 'text') {
+                        element.placeholder = lang[id];
+                    } else if (element.tagName === 'TEXTAREA') {
+                        element.placeholder = lang[id];
+                    } else {
+                        element.textContent = lang[id];
+                    }
+                }
+            });
+            
+            // Update symptom input placeholder
+            symptomInput.placeholder = currentLang === 'english' ? 
+                "Describe your symptoms here..." : 
+                "உங்கள் அறிகுறிகளை இங்கே விவரிக்கவும்...";
+                
+            // Update scheme ID placeholder
+            document.getElementById('schemeId').placeholder = currentLang === 'english' ? 
+                "Enter scheme ID" : 
+                "திட்ட ஐடியை உள்ளிடவும்";
+        }
+        
+        // Patient Registration
+        registrationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Get form values
+            const name = document.getElementById('patientName').value;
+            const age = document.getElementById('patientAge').value;
+            const gender = document.querySelector('input[name="gender"]:checked').value;
+            const medicalHistory = document.getElementById('medicalHistory').value;
+            
+            // Update patient info summary
+            patientNameValue.textContent = name;
+            patientAgeValue.textContent = age;
+            patientGenderValue.textContent = gender;
+            patientMedicalValue.textContent = medicalHistory || '-';
+            
+            // Hide registration and show main interface
+            patientRegistration.classList.add('hidden');
+            
+            // Show color info modal first time
+            colorInfoModal.classList.remove('hidden');
+        });
+        
+        // Color Info Modal
+        closeColorInfo.addEventListener('click', () => {
+            colorInfoModal.classList.add('hidden');
+        });
+        
+        colorInfoUnderstoodBtn.addEventListener('click', () => {
+            colorInfoModal.classList.add('hidden');
+        });
+        
+        colorInfoBtn.addEventListener('click', () => {
+            colorInfoModal.classList.remove('hidden');
+        });
+        
+        // Tab Switching
+        symptomTabBtn.addEventListener('click', () => {
+            symptomTabBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            prescriptionTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            voiceTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            symptomTab.classList.remove('hidden');
+            prescriptionTab.classList.add('hidden');
+            voiceTab.classList.add('hidden');
+        });
+        
+        prescriptionTabBtn.addEventListener('click', () => {
+            prescriptionTabBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            symptomTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            voiceTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            prescriptionTab.classList.remove('hidden');
+            symptomTab.classList.add('hidden');
+            voiceTab.classList.add('hidden');
+        });
+        
+        voiceTabBtn.addEventListener('click', () => {
+            voiceTabBtn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            symptomTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            prescriptionTabBtn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            voiceTab.classList.remove('hidden');
+            symptomTab.classList.add('hidden');
+            prescriptionTab.classList.add('hidden');
+        });
+        
+        // Prescription Upload
+        browseBtn.addEventListener('click', () => {
+            prescriptionUpload.click();
+        });
+        
+        prescriptionUpload.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    prescriptionImage.src = event.target.result;
+                    prescriptionPreview.classList.remove('hidden');
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Voice Recognition Setup
+        function setupSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                // Main voice recognition
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = currentLang === 'english' ? 'en-US' : 'ta-IN';
+                
+                recognition.onstart = () => {
+                    voiceStatus.textContent = currentLang === 'english' ? 'Listening...' : 'கேட்கிறது...';
+                    startVoiceBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    startVoiceBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+                    
+                    voiceText.textContent = transcript;
+                    voiceResult.classList.remove('hidden');
+                    analyzeVoiceBtn.classList.remove('hidden');
+                };
+                
+                recognition.onend = () => {
+                    voiceStatus.textContent = currentLang === 'english' ? 'Click to start speaking' : 'பேச தொடங்க கிளிக் செய்யவும்';
+                    startVoiceBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    startVoiceBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                };
+                
+                recognition.onerror = (event) => {
+                    voiceStatus.textContent = currentLang === 'english' ? 
+                        'Error occurred in recognition: ' + event.error : 
+                        'அங்கீகாரத்தில் பிழை ஏற்பட்டது: ' + event.error;
+                };
+                
+                // Registration voice recognition
+                registrationRecognition = new webkitSpeechRecognition();
+                registrationRecognition.continuous = false;
+                registrationRecognition.interimResults = false;
+                registrationRecognition.lang = currentLang === 'english' ? 'en-US' : 'ta-IN';
+                
+                registrationRecognition.onstart = () => {
+                    regVoiceStatus.textContent = currentLang === 'english' ? 'Listening...' : 'கேட்கிறது...';
+                    regVoiceBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+                    regVoiceBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                };
+                
+                registrationRecognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    regVoiceStatus.textContent = currentLang === 'english' ? 'Processing...' : 'செயலாக்குகிறது...';
+                    
+                    // Process the voice input for registration
+                    processRegistrationVoice(transcript);
+                };
+                
+                registrationRecognition.onend = () => {
+                    regVoiceStatus.textContent = currentLang === 'english' ? 
+                        'Click the microphone and say your name, age, and any medical conditions' : 
+                        'மைக்ரோஃபோனைக் கிளிக் செய்து உங்கள் பெயர், வயது மற்றும் மருத்துவ நிலைமைகளைக் கூறவும்';
+                    regVoiceBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    regVoiceBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                };
+            }
+        }
+        
+        // Process registration voice input
+        function processRegistrationVoice(transcript) {
+            // Use aiXplain API to process the voice input (simulated here)
+            setTimeout(() => {
+                // In a real implementation, this would call the aiXplain API
+                let name = '';
+                let age = '';
+                let medicalCondition = '';
+                
+                if (currentLang === 'english') {
+                    // Simple parsing for English
+                    if (transcript.toLowerCase().includes('my name is')) {
+                        name = transcript.split('my name is')[1].split('and')[0].trim();
+                    } else if (transcript.toLowerCase().includes('name')) {
+                        name = transcript.split('name')[1].split('age')[0].trim();
+                    }
+                    
+                    if (transcript.toLowerCase().includes('my age is')) {
+                        age = transcript.split('my age is')[1].split('and')[0].trim();
+                    } else if (transcript.toLowerCase().includes('age')) {
+                        age = transcript.split('age')[1].split('years')[0].trim();
+                    }
+                    
+                    if (transcript.toLowerCase().includes('medical condition') || 
+                        transcript.toLowerCase().includes('health condition')) {
+                        medicalCondition = transcript.split('condition')[1].trim();
+                    }
+                } else {
+                    // Simple parsing for Tamil (simplified)
+                    if (transcript.includes('என் பெயர்')) {
+                        name = transcript.split('என் பெயர்')[1].split('வயது')[0].trim();
+                    }
+                    
+                    if (transcript.includes('என் வயது')) {
+                        age = transcript.split('என் வயது')[1].split('ஆண்டுகள்')[0].trim();
+                    }
+                    
+                    if (transcript.includes('மருத்துவ நிலை')) {
+                        medicalCondition = transcript.split('மருத்துவ நிலை')[1].trim();
+                    }
+                }
+                
+                // Fill in the form with extracted information
+                if (name) document.getElementById('patientName').value = name;
+                if (age) document.getElementById('patientAge').value = age;
+                if (medicalCondition) document.getElementById('medicalHistory').value = medicalCondition;
+                
+                regVoiceStatus.textContent = currentLang === 'english' ? 
+                    'Information captured. Please verify and complete any missing details.' : 
+                    'தகவல் பதிவு செய்யப்பட்டது. சரிபார்த்து, விடுபட்ட விவரங்களை பூர்த்தி செய்யவும்.';
+            }, 1500);
+        }
+        
+        // Voice Recognition Events
+        startVoiceBtn.addEventListener('click', () => {
+            if (recognition) {
+                recognition.lang = currentLang === 'english' ? 'en-US' : 'ta-IN';
+                recognition.start();
+            } else {
+                voiceStatus.textContent = currentLang === 'english' ? 
+                    'Speech recognition not supported in this browser' : 
+                    'இந்த உலாவியில் பேச்சு அங்கீகாரம் ஆதரிக்கப்படவில்லை';
+            }
+        });
+        
+        regVoiceBtn.addEventListener('click', () => {
+            if (registrationRecognition) {
+                registrationRecognition.lang = currentLang === 'english' ? 'en-US' : 'ta-IN';
+                registrationRecognition.start();
+            } else {
+                regVoiceStatus.textContent = currentLang === 'english' ? 
+                    'Speech recognition not supported in this browser' : 
+                    'இந்த உலாவியில் பேச்சு அங்கீகாரம் ஆதரிக்கப்படவில்லை';
+            }
+        });
+        
+        // OCR for Prescription
+        scanPrescriptionBtn.addEventListener('click', () => {
+            if (prescriptionImage.src) {
+                const loadingText = currentLang === 'english' ? 'Scanning prescription...' : 'மருத்துவர் பரிந்துரையை ஸ்கேன் செய்கிறது...';
+                voiceStatus.textContent = loadingText;
+                
+                Tesseract.recognize(
+                    prescriptionImage.src,
+                    currentLang === 'english' ? 'eng' : 'tam',
+                    { logger: m => console.log(m) }
+                ).then(({ data: { text } }) => {
+                    symptomTabBtn.click();
+                    symptomInput.value = currentLang === 'english' ? 
+                        "Prescription: " + text : 
+                        "மருத்துவர் பரிந்துரை: " + text;
+                    
+                    const successText = currentLang === 'english' ? 
+                        'Prescription scanned successfully' : 
+                        'மருத்துவர் பரிந்துரை வெற்றிகரமாக ஸ்கேன் செய்யப்பட்டது';
+                    voiceStatus.textContent = successText;
+                    
+                    // Process with AI
+                    analyzeSymptomBtn.click();
+                });
+            }
+        });
+        
+        // Analyze Symptoms
+        analyzeSymptomBtn.addEventListener('click', () => {
+            if (symptomInput.value.trim() !== '') {
+                welcomeScreen.classList.add('hidden');
+                aiAnalysisSection.classList.remove('hidden');
+                analysisLoading.classList.remove('hidden');
+                analysisResults.classList.add('hidden');
+                
+                // Set timestamp
+                const now = new Date();
+                analysisTimestamp.textContent = now.toLocaleString();
+                
+                // Call aiXplain API for analysis (simulated here)
+                callAIXplainAPI(symptomInput.value);
+            }
+        });
+        
+        // Analyze Voice Input
+        analyzeVoiceBtn.addEventListener('click', () => {
+            if (voiceText.textContent.trim() !== '') {
+                symptomInput.value = voiceText.textContent;
+                symptomTabBtn.click();
+                analyzeSymptomBtn.click();
+            }
+        });
+        
+        // Call aiXplain API (simulated)
+        function callAIXplainAPI(input) {
+            // In a real implementation, this would call the aiXplain API
+            // Example of how it would be implemented:
+            /*
+            try {
+                const response = await fetch('https://api.aixplain.com/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AIXPLAIN_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        text: input,
+                        model: "6646261c6eb563165658bbb1" // GPT-4o model ID
+                    })
+                });
+                
+                const data = await response.json();
+                processAIResponse(data.result);
+            } catch (error) {
+                console.error('Error calling AI API:', error);
+                const errorMessage = currentLang === 'english' ? 
+                    'An error occurred while processing your request.' : 
+                    'உங்கள் கோரிக்கையை செயலாக்கும் போது பிழை ஏற்பட்டது.';
+                processAIResponse(errorMessage);
+            }
+            */
+            
+            // For demo purposes, simulate API call with timeout
+            setTimeout(() => {
+                // Mock diagnosis based on input
+                const symptoms = input.toLowerCase();
+                let diagnosis = '';
+                let medications = [];
+                
+                if (symptoms.includes('headache') || symptoms.includes('pain') || 
+                    symptoms.includes('தலைவலி') || symptoms.includes('வலி')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'You appear to be experiencing tension headache. This is often caused by stress, muscle strain, or dehydration.' : 
+                        'நீங்கள் அழுத்த தலைவலியை அனுபவிப்பதாகத் தெரிகிறது. இது பெரும்பாலும் மன அழுத்தம், தசை இழுப்பு அல்லது நீரிழப்பால் ஏற்படுகிறது.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Paracetamol 500mg' : 'பாராசிட்டமால் 500மிகி', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Take 1-2 tablets every 4-6 hours as needed for pain' : 'வலிக்கு தேவைப்படும்போது 4-6 மணிநேரத்திற்கு 1-2 மாத்திரைகள் எடுக்கவும்', 
+                            price: '₹15.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Ibuprofen 400mg' : 'ஐபுப்ரோஃபென் 400மிகி', 
+                            color: 'blue', 
+                            description: currentLang === 'english' ? 'Take 1 tablet every 8 hours after food' : 'உணவுக்குப் பிறகு 8 மணிநேரத்திற்கு 1 மாத்திரை எடுக்கவும்', 
+                            price: '₹25.00' 
+                        }
+                    ];
+                } else if (symptoms.includes('fever') || symptoms.includes('cold') || symptoms.includes('flu') || 
+                          symptoms.includes('காய்ச்சல்') || symptoms.includes('சளி') || symptoms.includes('ஜலதோஷம்')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'Your symptoms suggest a viral infection, possibly a common cold or mild flu.' : 
+                        'உங்கள் அறிகுறிகள் ஒரு வைரஸ் தொற்றைக் குறிக்கின்றன, சாதாரண சளி அல்லது லேசான காய்ச்சலாக இருக்கலாம்.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Paracetamol 500mg' : 'பாராசிட்டமால் 500மிகி', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Take 1-2 tablets every 4-6 hours to reduce fever' : 'காய்ச்சலைக் குறைக்க 4-6 மணிநேரத்திற்கு 1-2 மாத்திரைகள் எடுக்கவும்', 
+                            price: '₹15.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Cold Relief Syrup' : 'சளி நிவாரண சிரப்', 
+                            color: 'blue', 
+                            description: currentLang === 'english' ? '10ml three times daily after meals' : 'உணவுக்குப் பிறகு தினமும் மூன்று முறை 10மிலி', 
+                            price: '₹45.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Vitamin C 500mg' : 'வைட்டமின் சி 500மிகி', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Take 1 tablet daily to boost immunity' : 'நோய் எதிர்ப்பு சக்தியை அதிகரிக்க தினமும் 1 மாத்திரை எடுக்கவும்', 
+                            price: '₹30.00' 
+                        }
+                    ];
+                } else if (symptoms.includes('cough') || symptoms.includes('throat') || 
+                          symptoms.includes('இருமல்') || symptoms.includes('தொண்டை')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'You appear to have an upper respiratory tract infection with throat irritation.' : 
+                        'உங்களுக்கு தொண்டை எரிச்சலுடன் மேல் சுவாச பாதை தொற்று இருப்பதாகத் தெரிகிறது.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Cough Syrup' : 'இருமல் சிரப்', 
+                            color: 'blue', 
+                            description: currentLang === 'english' ? '10ml twice daily after meals' : 'உணவுக்குப் பிறகு தினமும் இரண்டு முறை 10மிலி', 
+                            price: '₹60.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Throat Lozenges' : 'தொண்டை லாஸென்ஜஸ்', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Dissolve 1 lozenge in mouth every 2-3 hours' : 'ஒவ்வொரு 2-3 மணிநேரத்திற்கும் 1 லாஸென்ஜை வாயில் கரைக்கவும்', 
+                            price: '₹20.00' 
+                        }
+                    ];
+                } else if (symptoms.includes('stomach') || symptoms.includes('diarrhea') || symptoms.includes('vomit') || 
+                          symptoms.includes('வயிறு') || symptoms.includes('வயிற்றுப்போக்கு') || symptoms.includes('வாந்தி')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'Your symptoms indicate gastroenteritis, which is inflammation of the stomach and intestines.' : 
+                        'உங்கள் அறிகுறிகள் வயிறு மற்றும் குடல் அழற்சியான வயிற்றுப்போக்கைக் குறிக்கின்றன.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Oral Rehydration Solution' : 'வாய்வழி நீரேற்ற கரைசல்', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Dissolve in water and drink as needed' : 'தண்ணீரில் கரைத்து தேவைப்படும்போது குடிக்கவும்', 
+                            price: '₹25.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Loperamide 2mg' : 'லோபெரமைடு 2மிகி', 
+                            color: 'yellow', 
+                            description: currentLang === 'english' ? 'Take 1 capsule after each loose stool' : 'ஒவ்வொரு தளர்வான மலத்திற்கும் பிறகு 1 கேப்சூல் எடுக்கவும்', 
+                            price: '₹35.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Probiotic Capsules' : 'புரோபயாடிக் கேப்சூல்கள்', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Take 1 capsule twice daily' : 'தினமும் இரண்டு முறை 1 கேப்சூல் எடுக்கவும்', 
+                            price: '₹70.00' 
+                        }
+                    ];
+                } else if (symptoms.includes('allergy') || symptoms.includes('rash') || symptoms.includes('itch') || 
+                          symptoms.includes('ஒவ்வாமை') || symptoms.includes('தடிப்பு') || symptoms.includes('அரிப்பு')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'You appear to be experiencing an allergic reaction. This could be due to food, medication, or environmental factors.' : 
+                        'நீங்கள் ஒவ்வாமை எதிர்வினையை அனுபவிப்பதாகத் தெரிகிறது. இது உணவு, மருந்து அல்லது சுற்றுச்சூழல் காரணிகளால் ஏற்படலாம்.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Cetirizine 10mg' : 'செட்டிரிசின் 10மிகி', 
+                            color: 'blue', 
+                            description: currentLang === 'english' ? 'Take 1 tablet daily' : 'தினமும் 1 மாத்திரை எடுக்கவும்', 
+                            price: '₹30.00' 
+                        },
+                        { 
+                            name: currentLang === 'english' ? 'Calamine Lotion' : 'காலமைன் லோஷன்', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Apply to affected areas 2-3 times daily' : 'பாதிக்கப்பட்ட பகுதிகளில் தினமும் 2-3 முறை தடவவும்', 
+                            price: '₹45.00' 
+                        }
+                    ];
+                } else if (symptoms.includes('prescription') || symptoms.includes('மருத்துவர் பரிந்துரை')) {
+                    diagnosis = currentLang === 'english' ? 
+                        'Based on your prescription, we have identified the following medications:' : 
+                        'உங்கள் மருத்துவர் பரிந்துரையின் அடிப்படையில், பின்வரும் மருந்துகளை அடையாளம் கண்டுள்ளோம்:';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'Medication as per prescription' : 'மருத்துவர் பரிந்துரையின்படி மருந்து', 
+                            color: 'yellow', 
+                            description: currentLang === 'english' ? 'Follow doctor\'s instructions' : 'மருத்துவரின் வழிமுறைகளைப் பின்பற்றவும்', 
+                            price: '₹120.00' 
+                        }
+                    ];
+                } else {
+                    diagnosis = currentLang === 'english' ? 
+                        'Based on your symptoms, we recommend a consultation with a doctor for a more accurate diagnosis.' : 
+                        'உங்கள் அறிகுறிகளின் அடிப்படையில், மேலும் துல்லியமான நோயறிதலுக்கு மருத்துவரை ஆலோசிக்க பரிந்துரைக்கிறோம்.';
+                    medications = [
+                        { 
+                            name: currentLang === 'english' ? 'First Aid Kit' : 'முதலுதவி பெட்டி', 
+                            color: 'green', 
+                            description: currentLang === 'english' ? 'Basic medical supplies' : 'அடிப்ப��ை மருத்துவ பொருட்கள்', 
+                            price: '₹150.00' 
+                        }
+                    ];
+                }
+                
+                processAIResponse(diagnosis, medications);
+            }, 2000);
+        }
+        
+        // Process AI Response
+        function processAIResponse(diagnosis, medications) {
+            analysisLoading.classList.add('hidden');
+            analysisResults.classList.remove('hidden');
+            
+            diagnosisSummary.textContent = diagnosis;
+            
+            // Generate medicine cards
+            medicationsList.innerHTML = '';
+            medications.forEach(med => {
+                const card = document.createElement('div');
+                card.className = `medicine-card border-2 rounded-lg p-4 medicine-${med.color}`;
+                
+                const selectBtnText = currentLang === 'english' ? 'Select' : 'தேர்வு';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium">${med.name}</h4>
+                        <span class="text-gray-700">${med.price}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">${med.description}</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs px-2 py-1 bg-white bg-opacity-50 rounded-full">
+                            ${currentLang === 'english' ? 
+                                med.color.charAt(0).toUpperCase() + med.color.slice(1) + ' Category' : 
+                                getColorNameInTamil(med.color) + ' வகை'}
+                        </span>
+                        <button class="select-med-btn text-sm bg-white hover:bg-gray-100 text-gray-800 font-semibold py-1 px-3 border border-gray-400 rounded shadow">
+                            ${selectBtnText}
+                        </button>
+                    </div>
+                `;
+                medicationsList.appendChild(card);
+                
+                // Add event listener to select button
+                const selectBtn = card.querySelector('.select-med-btn');
+                selectBtn.addEventListener('click', () => {
+                    selectBtn.textContent = selectBtn.textContent === selectBtnText ? 
+                        (currentLang === 'english' ? 'Selected' : 'தேர்ந்தெடுக்கப்பட்டது') : 
+                        selectBtnText;
+                    selectBtn.classList.toggle('bg-green-500');
+                    selectBtn.classList.toggle('text-white');
+                    selectBtn.classList.toggle('bg-white');
+                    selectBtn.classList.toggle('text-gray-800');
+                });
+            });
+        }
+        
+        // Helper function to get color name in Tamil
+        function getColorNameInTamil(color) {
+            switch(color) {
+                case 'green': return 'பச்சை';
+                case 'blue': return 'நீலம்';
+                case 'yellow': return 'மஞ்சள்';
+                case 'orange': return 'ஆரஞ்சு';
+                case 'red': return 'சிவப்பு';
+                default: return color;
+            }
+        }
+        
+        // Doctor Consultation
+        consultDoctorBtn.addEventListener('click', () => {
+            aiAnalysisSection.classList.add('hidden');
+            doctorConsultationSection.classList.remove('hidden');
+            consultationConnecting.classList.remove('hidden');
+            consultationActive.classList.add('hidden');
+            
+            // Simulate connecting to doctor
+            setTimeout(() => {
+                consultationConnecting.classList.add('hidden');
+                consultationActive.classList.remove('hidden');
+                
+                // Set doctor's notes based on diagnosis
+                doctorNotes.textContent = diagnosisSummary.textContent + (currentLang === 'english' ? 
+                    " I recommend following the prescribed medication and getting plenty of rest. If symptoms persist for more than 3 days, please schedule a follow-up consultation." : 
+                    " பரிந்துரைக்கப்பட்ட மருந்தைப் பின்பற்றி நிறைய ஓய்வெடுக்க பரிந்துரைக்கிறேன். அறிகுறிகள் 3 நாட்களுக்கு மேல் நீடித்தால், தயவுசெய்து தொடர் ஆலோசனையை திட்டமிடவும்.");
+            }, 3000);
+        });
+        
+        // End Consultation
+        endConsultationBtn.addEventListener('click', () => {
+            doctorConsultationSection.classList.add('hidden');
+            aiAnalysisSection.classList.remove('hidden');
+        });
+        
+        // Payment Processing
+        proceedToPaymentBtn.addEventListener('click', () => {
+            aiAnalysisSection.classList.add('hidden');
+            paymentSection.classList.remove('hidden');
+            
+            // Populate selected medications
+            selectedMedicationsList.innerHTML = '';
+            let total = 0;
+            
+            document.querySelectorAll('.select-med-btn').forEach(btn => {
+                if (btn.textContent === (currentLang === 'english' ? 'Selected' : 'தேர்ந்தெடுக்கப்பட்டது')) {
+                    const card = btn.closest('.medicine-card');
+                    const name = card.querySelector('h4').textContent;
+                    const price = card.querySelector('span').textContent;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'p-4 flex justify-between items-center';
+                    item.innerHTML = `
+                        <span>${name}</span>
+                        <span>${price}</span>
+                    `;
+                    selectedMedicationsList.appendChild(item);
+                    
+                    // Add to total
+                    total += parseInt(price.replace('₹', ''));
+                }
+            });
+            
+            totalAmount.textContent = `₹${total.toFixed(2)}`;
+        });
+        
+        // Back to Analysis
+        backToAnalysisBtn.addEventListener('click', () => {
+            paymentSection.classList.add('hidden');
+            aiAnalysisSection.classList.remove('hidden');
+        });
+        
+        // Confirm Payment
+        confirmPaymentBtn.addEventListener('click', () => {
+            paymentSection.classList.add('hidden');
+            dispensingSection.classList.remove('hidden');
+            
+            // Simulate dispensing process
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                dispensingProgress.style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        dispensingProcess.classList.add('hidden');
+                        dispensingComplete.classList.remove('hidden');
+                    }, 500);
+                }
+            }, 500);
+        });
+        
+        // Finish Button
+        finishBtn.addEventListener('click', () => {
+            dispensingSection.classList.add('hidden');
+            welcomeScreen.classList.remove('hidden');
+            
+            // Reset form
+            symptomInput.value = '';
+            prescriptionPreview.classList.add('hidden');
+            voiceResult.classList.add('hidden');
+            analyzeVoiceBtn.classList.add('hidden');
+        });
+        
+        // Government Scheme Checkbox
+        schemeCheckbox.addEventListener('change', () => {
+            if (schemeCheckbox.checked) {
+                schemeDetails.classList.remove('hidden');
+            } else {
+                schemeDetails.classList.add('hidden');
+            }
+        });
+        
+        // Emergency Button
+        emergencyBtn.addEventListener('click', () => {
+            const message = currentLang === 'english' ? 
+                'Emergency services have been notified. Please remain calm and wait for assistance.' : 
+                'அவசர சேவைகள் அறிவிக்கப்பட்டுள்ளன. தயவுசெய்து அமைதியாக இருந்து உதவிக்காக காத்திருக்கவும்.';
+            alert(message);
+        });
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default tab
+            symptomTabBtn.click();
+            
+            // Setup speech recognition
+            setupSpeechRecognition();
+            
+            // Check for speech recognition support
+            if (!('webkitSpeechRecognition' in window)) {
+                voiceTabBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                const notSupportedText = currentLang === 'english' ? 
+                    'Speech recognition not supported in this browser' : 
+                    'இந்த உலாவியில் பேச்சு அங்கீகாரம் ஆதரிக்கப்படவில்லை';
+                voiceStatus.textContent = notSupportedText;
+                regVoiceStatus.textContent = notSupportedText;
+            }
+        });
+    </script>
+</body>
+</html>
+
